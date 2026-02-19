@@ -1,0 +1,72 @@
+"use client";
+
+import { UIMessage } from "ai";
+import {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "@/components/ui/resizable";
+import { AgentChat } from "./agent-chat";
+import { DocumentPanel } from "./document-panel";
+import { useState, useCallback } from "react";
+
+interface AgentViewProps {
+  id: string;
+  initialMessages?: UIMessage[];
+}
+
+export interface DocumentState {
+  filePath?: string;
+  fileName?: string;
+  irJson?: string;
+  documentId?: string;
+  /** Whether the agent is currently streaming / processing */
+  isAgentWorking?: boolean;
+}
+
+export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
+  const [documentState, setDocumentState] = useState<DocumentState>({});
+
+  const handleFileUploaded = useCallback(
+    (filePath: string, fileName: string) => {
+      setDocumentState((prev) => ({ ...prev, filePath, fileName }));
+    },
+    []
+  );
+
+  const handleIRUpdate = useCallback((irJson: string, documentId?: string) => {
+    setDocumentState((prev) => ({
+      ...prev,
+      irJson: irJson || prev.irJson,
+      documentId: documentId || prev.documentId,
+    }));
+  }, []);
+
+  const handleStatusChange = useCallback((isWorking: boolean) => {
+    setDocumentState((prev) => ({
+      ...prev,
+      isAgentWorking: isWorking,
+    }));
+  }, []);
+
+  return (
+    <div className="h-dvh flex flex-col">
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        <ResizablePanel defaultSize={45} minSize={25}>
+          <DocumentPanel documentState={documentState} />
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel defaultSize={55} minSize={30}>
+          <AgentChat
+            id={id}
+            initialMessages={initialMessages}
+            documentState={documentState}
+            onFileUploaded={handleFileUploaded}
+            onIRUpdate={handleIRUpdate}
+            onStatusChange={handleStatusChange}
+          />
+        </ResizablePanel>
+      </ResizablePanelGroup>
+    </div>
+  );
+}

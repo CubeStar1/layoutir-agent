@@ -75,9 +75,10 @@ export async function POST(req: Request) {
     let telemetry: any = null;
 
     const stream = createUIMessageStream({
-      execute: ({ writer: dataStream }) => {
+      execute: async ({ writer: dataStream }) => {
         const startTime = Date.now();
         let firstTokenTime: number | null = null;
+        const modelMessages = await convertToModelMessages(messages);
 
         const result = streamText({
           model: provider.languageModel(model as any),
@@ -87,7 +88,7 @@ export async function POST(req: Request) {
             }
           },
           system: systemPrompt,
-          messages: convertToModelMessages(messages),
+          messages: modelMessages,
           tools: {
             querySupabase: querySupabaseTool,
             generateChart: generateChart,

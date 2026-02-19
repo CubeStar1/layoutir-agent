@@ -16,4 +16,4 @@ export const models: Model[] = [
   { id: 'gpt-oss-120b', label: 'GPT OSS 120B', provider: 'Cerebras' },
 ];
 
-export const defaultModel = 'gemini-2.5-flash';
+export const defaultModel = 'gpt-4.1-mini';
