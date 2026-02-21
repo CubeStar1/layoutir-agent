@@ -89,33 +89,6 @@ export function AgentSidebar({ user }: AgentSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Agents">
-                  <BotIcon className="size-4" />
-                  <span>Agents</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="History">
-                  <HistoryIcon className="size-4" />
-                  <span>History</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Components">
-                  <LayoutGridIcon className="size-4" />
-                  <span>Components</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton tooltip="Code">
-                  <CodeIcon className="size-4" />
-                  <span>Code</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
