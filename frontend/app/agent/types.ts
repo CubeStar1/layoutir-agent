@@ -34,3 +34,13 @@ export interface Message {
   created_at: string;
   metadata?: TelemetryMetadata;
 }
+
+export type ArtifactDisplayType = 'document' | 'code' | 'markdown' | 'custom'
+
+export interface ArtifactState {
+  isOpen: boolean
+  title?: string
+  displayType: ArtifactDisplayType
+  content?: string
+  identifier?: string
+}

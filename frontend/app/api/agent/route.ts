@@ -1,4 +1,5 @@
 import { getMCPTools } from '@/lib/ai/mcp/mcp-client';
+import { showArtifactTool } from './tools/show-artifact';
 import {
   streamText,
   UIMessage,
@@ -21,9 +22,15 @@ You have access to MCP tools for document processing. The tools are prefixed wit
 1. When the user uploads a document, use \`layoutir_convert_document\` to convert it to IR — it returns a \`document_id\`
 2. Use \`layoutir_read_ir\` with the \`document_id\` to understand the document structure
 3. IMPORTANT: After reading, always call \`layoutir_get_ir_json\` with the \`document_id\` — the frontend needs this to display the document with bounding boxes
-4. Use \`layoutir_edit_ir_block\`, \`layoutir_add_ir_block\`, or \`layoutir_delete_ir_block\` with the \`document_id\` and \`block_id\`
-5. After any edit, call \`layoutir_get_ir_json\` again so the frontend viewer updates
-6. Use \`layoutir_export_to_markdown\` with the \`document_id\` to export the final document
+4. **After getting the IR JSON, ALWAYS call \`show_artifact\` with type "document" to open the document viewer panel for the user**
+5. Use \`layoutir_edit_ir_block\`, \`layoutir_add_ir_block\`, or \`layoutir_delete_ir_block\` with the \`document_id\` and \`block_id\`
+6. After any edit, call \`layoutir_get_ir_json\` again so the frontend viewer updates, then call \`show_artifact\` again
+7. Use \`layoutir_export_to_markdown\` with the \`document_id\` to export the final document
+
+## Artifact Panel
+- Use \`show_artifact\` to open a side panel showing content to the user
+- Always call it with type "document" after converting or reading a document
+- The artifact panel is dismissable — calling \`show_artifact\` will re-open it
 
 ## Important Rules
 - All tools reference documents by \`document_id\` — you do NOT pass raw IR JSON
@@ -110,7 +117,10 @@ export async function POST(req: Request) {
           model: provider.languageModel(model as any),
           system: systemPrompt,
           messages: modelMessages,
-          tools: mcpTools,
+          tools: {
+            show_artifact: showArtifactTool,
+            ...mcpTools,
+          },
           stopWhen: stepCountIs(15),
           onError: (error) => {
             console.error('[Agent] Stream error:', error);

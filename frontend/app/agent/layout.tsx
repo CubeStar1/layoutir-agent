@@ -1,5 +1,5 @@
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/app/chat/components/sidebar/app-sidebar";
+import { AgentSidebar } from "@/app/agent/components/sidebar/agent-sidebar";
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -20,7 +20,7 @@ export default async function AgentLayout({
   return (
     <div className="flex h-screen">
       <SidebarProvider defaultOpen={false}>
-        <AppSidebar user={user} />
+        <AgentSidebar user={user} />
         <div className="flex-1">{children}</div>
       </SidebarProvider>
     </div>

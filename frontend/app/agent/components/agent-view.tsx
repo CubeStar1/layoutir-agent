@@ -7,8 +7,9 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { AgentChat } from "./agent-chat";
-import { DocumentPanel } from "./document-panel";
+import { ArtifactPanel } from "./artifact-panel";
 import { useState, useCallback } from "react";
+import type { ArtifactState } from "../types";
 
 interface AgentViewProps {
   id: string;
@@ -26,6 +27,10 @@ export interface DocumentState {
 
 export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
   const [documentState, setDocumentState] = useState<DocumentState>({});
+  const [artifactState, setArtifactState] = useState<ArtifactState>({
+    isOpen: false,
+    displayType: 'document',
+  });
 
   const handleFileUploaded = useCallback(
     (filePath: string, fileName: string) => {
@@ -49,14 +54,33 @@ export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
     }));
   }, []);
 
+  const handleArtifactUpdate = useCallback((artifact: Partial<ArtifactState>) => {
+    setArtifactState((prev) => ({
+      ...prev,
+      ...artifact,
+      isOpen: true,
+    }));
+  }, []);
+
+  const handleArtifactClose = useCallback(() => {
+    setArtifactState((prev) => ({
+      ...prev,
+      isOpen: false,
+    }));
+  }, []);
+
+  const handleArtifactReopen = useCallback(() => {
+    setArtifactState((prev) => ({
+      ...prev,
+      isOpen: true,
+    }));
+  }, []);
+
   return (
     <div className="h-dvh flex flex-col">
       <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={45} minSize={25}>
-          <DocumentPanel documentState={documentState} />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel defaultSize={55} minSize={30}>
+        {/* Chat Panel — always visible, takes full width when artifact is closed */}
+        <ResizablePanel defaultSize={artifactState.isOpen ? 45 : 100} minSize={30}>
           <AgentChat
             id={id}
             initialMessages={initialMessages}
@@ -64,8 +88,24 @@ export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
             onFileUploaded={handleFileUploaded}
             onIRUpdate={handleIRUpdate}
             onStatusChange={handleStatusChange}
+            onArtifactUpdate={handleArtifactUpdate}
+            onArtifactReopen={handleArtifactReopen}
           />
         </ResizablePanel>
+
+        {/* Artifact Panel — slides in from the right when open */}
+        {artifactState.isOpen && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={55} minSize={25}>
+              <ArtifactPanel
+                artifact={artifactState}
+                documentState={documentState}
+                onClose={handleArtifactClose}
+              />
+            </ResizablePanel>
+          </>
+        )}
       </ResizablePanelGroup>
     </div>
   );

@@ -19,13 +19,14 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { UploadIcon, FileTextIcon } from "lucide-react";
+import { UploadIcon, FileTextIcon, PanelLeftIcon } from "lucide-react";
 import { toast } from "sonner";
 import { generateUUID } from "@/app/agent/lib/utils/generate-uuid";
 import { useModelSelection } from "@/app/agent/hooks/use-model-selection";
 import { ModelSelector } from "@/app/agent/components/model-selector";
 import type { DocumentState } from "./agent-view";
-import { AgentHistoryPopover } from "./agent-history-popover";
+import type { ArtifactState } from "../types";
+import { useSidebar } from "@/components/ui/sidebar";
 
 interface AgentChatProps {
   id: string;
@@ -34,6 +35,8 @@ interface AgentChatProps {
   onFileUploaded: (filePath: string, fileName: string) => void;
   onIRUpdate: (irJson: string, documentId?: string) => void;
   onStatusChange: (isWorking: boolean) => void;
+  onArtifactUpdate: (artifact: Partial<ArtifactState>) => void;
+  onArtifactReopen: () => void;
 }
 
 export function AgentChat({
@@ -43,10 +46,13 @@ export function AgentChat({
   onFileUploaded,
   onIRUpdate,
   onStatusChange,
+  onArtifactUpdate,
+  onArtifactReopen,
 }: AgentChatProps) {
   const [input, setInput] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { selectedModel, handleModelChange } = useModelSelection();
+  const { toggleSidebar } = useSidebar();
 
   const { messages, status, sendMessage } = useChat({
     messages: initialMessages,
@@ -97,13 +103,28 @@ export function AgentChat({
     return data;
   }, []);
 
-  // Watch for IR updates in tool results from assistant messages
+  // Watch for IR updates and artifact tool calls in assistant messages
   useEffect(() => {
     if (messages.length === 0) return;
     const lastMessage = messages[messages.length - 1];
     if (lastMessage.role !== "assistant") return;
 
     for (const part of lastMessage.parts) {
+      // Static tool: show_artifact
+      if (
+        part.type === "tool-show_artifact" &&
+        (part.state === "output-available" || part.state === "input-available")
+      ) {
+        const input = (part as any).input;
+        if (input) {
+          onArtifactUpdate({
+            title: input.title,
+            displayType: input.type || 'document',
+            identifier: input.identifier,
+          });
+        }
+      }
+
       // In AI SDK v6, MCP tool parts have type 'dynamic-tool'
       // and state 'output-available' when complete
       if (
@@ -148,7 +169,7 @@ export function AgentChat({
         }
       }
     }
-  }, [messages, onIRUpdate, unwrapMCPOutput]);
+  }, [messages, onIRUpdate, onArtifactUpdate, unwrapMCPOutput]);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
@@ -249,6 +270,12 @@ export function AgentChat({
     <div className="flex h-full min-w-0 flex-col bg-background">
       {/* Header */}
       <div className="flex items-center gap-2 border-b px-4 py-3">
+        <button
+          onClick={() => toggleSidebar()}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        >
+          <PanelLeftIcon className="size-4" />
+        </button>
         <FileTextIcon className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-medium">Document Agent</h2>
         <div className="ml-auto flex items-center gap-2">
@@ -257,7 +284,6 @@ export function AgentChat({
               {documentState.fileName}
             </span>
           )}
-          <AgentHistoryPopover currentChatId={id} />
         </div>
       </div>
 
@@ -281,6 +307,7 @@ export function AgentChat({
           <Messages
             isLoading={status === "submitted" || status === "streaming"}
             messages={messages}
+            onArtifactReopen={onArtifactReopen}
           />
         </ConversationContent>
         <ConversationScrollButton />
