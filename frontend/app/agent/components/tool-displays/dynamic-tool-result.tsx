@@ -16,11 +16,16 @@ import {
   Trash2,
   FileOutput,
   Braces,
-  Database,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Shimmer } from '@/components/ai-elements/shimmer'
-import { Badge } from '@/components/ui/badge'
+import { ConvertDocumentResult } from './convert-document-result'
+import { ReadIrResult } from './read-ir-result'
+import { GetIrJsonResult } from './get-ir-json-result'
+import { EditIrBlockResult } from './edit-ir-block-result'
+import { AddIrBlockResult } from './add-ir-block-result'
+import { DeleteIrBlockResult } from './delete-ir-block-result'
+import { ExportResult } from './export-result'
 
 interface DynamicToolResultProps {
   part: DynamicToolUIPart
@@ -87,87 +92,6 @@ function formatToolName(name: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-/** Generate a human-readable one-line summary from the tool output */
-function getSmartSummary(toolKey: string, output: any): string | null {
-  if (!output) return null
-
-  let data = output
-  if (typeof output === 'string') {
-    try {
-      data = JSON.parse(output)
-    } catch {
-      return null
-    }
-  }
-
-  // Handle MCP content wrapper
-  if (data?.content && Array.isArray(data.content)) {
-    const textParts = data.content
-      .filter((item: any) => item.type === 'text' && item.text)
-      .map((item: any) => item.text)
-    if (textParts.length > 0) {
-      // Try to parse the inner text as JSON for structured tools
-      try {
-        data = JSON.parse(textParts.join(''))
-      } catch {
-        // Use the text summary approach below
-      }
-    }
-  }
-
-  switch (toolKey) {
-    case 'convert_document':
-      if (data.document_id) return `Document ID: ${data.document_id}`
-      return null
-
-    case 'read_ir': {
-      if (typeof data === 'string') {
-        // Count lines as rough block indicator
-        const lines = data.split('\n').filter((l: string) => l.trim()).length
-        return `${lines} lines of IR content`
-      }
-      if (data.blocks) return `${data.blocks.length} blocks across ${new Set(data.blocks.map((b: any) => b.page_number).filter(Boolean)).size || 1} page(s)`
-      return null
-    }
-
-    case 'get_ir_json': {
-      if (data.blocks) {
-        const pageCount = new Set(
-          data.blocks.map((b: any) => b.page_number).filter(Boolean)
-        ).size
-        return `${data.blocks.length} blocks, ${pageCount || 1} page(s)`
-      }
-      return null
-    }
-
-    case 'edit_ir_block':
-      if (data.success) return `Block updated successfully`
-      if (data.error) return `Failed: ${data.error}`
-      return null
-
-    case 'add_ir_block':
-      if (data.success || data.block_id) return `Block added${data.block_id ? ` (${data.block_id.slice(0, 12)}…)` : ''}`
-      if (data.error) return `Failed: ${data.error}`
-      return null
-
-    case 'delete_ir_block':
-      if (data.success) return `Block deleted successfully`
-      if (data.error) return `Failed: ${data.error}`
-      return null
-
-    case 'export_to_latex':
-    case 'export_to_docx': {
-      if (data.download_url) return `Export ready`
-      if (data.file_path) return `Exported to ${data.file_path}`
-      if (data.success) return `Export completed`
-      if (data.error) return `Failed: ${data.error}`
-      return null
-    }
-
-    default:
-      return null
-  }
-}
 
 function DynamicToolResultInternal({ part }: DynamicToolResultProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -207,11 +131,31 @@ function DynamicToolResultInternal({ part }: DynamicToolResultProps) {
   }
 
   const outputText = isCompleted ? getTextContent(part.output) : null
-  const smartSummary = isCompleted && lirTool
-    ? getSmartSummary(lirTool.key, part.output)
-    : null
 
   const canExpand = Boolean((isCompleted && outputText) || (isLoading && part.input))
+
+  const renderToolResult = (toolKey: string, output: any) => {
+    switch (toolKey) {
+      case 'convert_document':
+        return <ConvertDocumentResult data={output} />
+      case 'read_ir':
+        return <ReadIrResult data={output} />
+      case 'get_ir_json':
+        return <GetIrJsonResult data={output} />
+      case 'edit_ir_block':
+        return <EditIrBlockResult data={output} />
+      case 'add_ir_block':
+        return <AddIrBlockResult data={output} />
+      case 'delete_ir_block':
+        return <DeleteIrBlockResult data={output} />
+      case 'export_to_latex':
+        return <ExportResult data={output} format="latex" />
+      case 'export_to_docx':
+        return <ExportResult data={output} format="docx" />
+      default:
+        return null
+    }
+  }
 
   return (
     <motion.div
@@ -241,10 +185,6 @@ function DynamicToolResultInternal({ part }: DynamicToolResultProps) {
               ) : hasError ? (
                 <span className="text-red-500 text-xs truncate">
                   {(part as any).errorText || 'Error'}
-                </span>
-              ) : smartSummary ? (
-                <span className="text-xs text-muted-foreground truncate">
-                  {smartSummary}
                 </span>
               ) : null}
             </div>
@@ -291,9 +231,15 @@ function DynamicToolResultInternal({ part }: DynamicToolResultProps) {
               {isCompleted && outputText && (
                 <div className="py-2">
                   <div className="text-xs text-muted-foreground mb-1 font-medium">Output</div>
-                  <pre className="text-xs bg-muted/50 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-64 overflow-y-auto">
-                    {outputText}
-                  </pre>
+                  {lirTool ? (
+                    <div className="bg-muted/50 rounded p-2">
+                      {renderToolResult(lirTool.key, part.output)}
+                    </div>
+                  ) : (
+                    <pre className="text-xs bg-muted/50 rounded p-2 overflow-x-auto whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      {outputText}
+                    </pre>
+                  )}
                 </div>
               )}
               {hasError && (part as any).errorText && (

@@ -13,6 +13,7 @@ import {
 } from '@/components/ai-elements/message'
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning'
 import { DynamicToolResult } from '@/app/agent/components/tool-displays/dynamic-tool-result'
+import { StaticToolDisplay } from '@/app/agent/components/tool-displays/static-tool-display'
 import { ThinkingMessage } from './message'
 import { CopyIcon, RefreshCcw, Zap, Clock, BrainCircuit } from 'lucide-react'
 import { toast } from 'sonner'
@@ -79,7 +80,7 @@ function PureMessages({ isLoading, messages }: MessagesProps) {
                     )
                   }
                   if (isStaticToolUIPart(part)) {
-                    return <DynamicToolResult key={`dynamic-${partIndex}`} part={part as any} />
+                    return <StaticToolDisplay key={`static-${partIndex}`} part={part} />
                   }
                   // Dynamic MCP tools
                   if (part.type === 'dynamic-tool') {
