@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, UIMessage } from "ai";
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Messages } from "@/app/chat/components/messages";
+import { Messages } from "@/app/agent/components/messages";
 import {
   PromptInput,
   PromptInputBody,
@@ -21,10 +21,11 @@ import {
 } from "@/components/ai-elements/conversation";
 import { UploadIcon, FileTextIcon } from "lucide-react";
 import { toast } from "sonner";
-import { generateUUID } from "@/app/chat/lib/utils/generate-uuid";
-import { useModelSelection } from "@/app/chat/hooks/use-model-selection";
-import { ModelSelector } from "@/app/chat/components/model-selector";
+import { generateUUID } from "@/app/agent/lib/utils/generate-uuid";
+import { useModelSelection } from "@/app/agent/hooks/use-model-selection";
+import { ModelSelector } from "@/app/agent/components/model-selector";
 import type { DocumentState } from "./agent-view";
+import { AgentHistoryPopover } from "./agent-history-popover";
 
 interface AgentChatProps {
   id: string;
@@ -58,6 +59,13 @@ export function AgentChat({
       toast.error("Agent error", { description: error.message });
     },
   });
+
+  // Update URL to include conversation ID after first message
+  useEffect(() => {
+    if (messages.length > 0 && !window.location.pathname.includes(id)) {
+      window.history.replaceState({}, "", `/agent/${id}`);
+    }
+  }, [id, messages]);
 
   // Propagate chat status to parent for document panel state
   useEffect(() => {
@@ -243,11 +251,14 @@ export function AgentChat({
       <div className="flex items-center gap-2 border-b px-4 py-3">
         <FileTextIcon className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-medium">Document Agent</h2>
-        {documentState.fileName && (
-          <span className="ml-auto rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-            {documentState.fileName}
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {documentState.fileName && (
+            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
+              {documentState.fileName}
+            </span>
+          )}
+          <AgentHistoryPopover currentChatId={id} />
+        </div>
       </div>
 
       {/* Messages */}

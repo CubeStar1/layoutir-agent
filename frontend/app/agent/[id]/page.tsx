@@ -1,6 +1,6 @@
 import { createSupabaseServer } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
-import { getUser } from "@/app/chat/hooks/get-user";
+import { getUser } from "@/app/agent/hooks/get-user";
 import { Suspense } from "react";
 import { AgentView } from "../components/agent-view";
 

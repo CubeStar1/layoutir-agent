@@ -7,7 +7,9 @@ import {
   JsonToSseTransformStream,
   stepCountIs,
 } from 'ai';
-import { createMyProvider } from '@/app/chat/lib/ai/providers/providers';
+import { createMyProvider } from '@/app/agent/lib/ai/providers/providers';
+import { getUser } from '@/app/agent/hooks/get-user';
+import { saveMessages, getChatById, saveChat, generateTitleFromUserMessage } from '@/app/agent/actions';
 
 export const maxDuration = 300;
 
@@ -35,6 +37,15 @@ Each block has: block_id, type (paragraph/heading/list), content (text), order (
 
 export async function POST(req: Request) {
   try {
+    const user = await getUser();
+
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     const {
       messages,
       model='gpt-4.1-mini',
@@ -46,6 +57,31 @@ export async function POST(req: Request) {
       conversationID?: string;
       documentContext?: { filePath?: string; documentId?: string };
     } = await req.json();
+
+    const userMessage = messages[messages.length - 1];
+
+    // Create or verify conversation
+    if (conversationID) {
+      const chat = await getChatById(conversationID);
+      if (chat) {
+        if (chat.user_id !== user.id) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+        }
+      } else {
+        const title = await generateTitleFromUserMessage({
+          message: userMessage,
+          model: model || 'gpt-4.1-mini',
+        });
+        await saveChat({
+          id: conversationID,
+          userId: user.id,
+          title,
+        });
+      }
+
+      // Save user message
+      await saveMessages([userMessage], conversationID);
+    }
 
     const provider = createMyProvider();
     console.log("Model:", model);
@@ -83,6 +119,11 @@ export async function POST(req: Request) {
 
         result.consumeStream();
         dataStream.merge(result.toUIMessageStream());
+      },
+      onFinish: async ({ messages: generatedMessages }) => {
+        if (conversationID && generatedMessages && generatedMessages.length > 0) {
+          await saveMessages(generatedMessages as any, conversationID);
+        }
       },
     });
 
