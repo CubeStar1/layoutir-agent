@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Maximize2, Minimize2 } from 'lucide-react'
 import { useState } from 'react'
 import { useAgentStore } from '../store/agent-store'
+import { MessageResponse } from '@/components/ai-elements/message'
+import { CodeBlock } from '@/components/ai-elements/code-block'
 
 export function ArtifactPanel() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -82,7 +84,19 @@ export function ArtifactPanel() {
           >
             {/* The key prop ensures React completely unmounts and remounts the UI when a new one is passed */}
             <div key={artifact.identifier || Date.now()} className="h-full w-full">
-              {artifact.ui}
+              {artifact.displayType === 'markdown' ? (
+                <div className="overflow-auto h-full p-6">
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <MessageResponse>{artifact.content || ''}</MessageResponse>
+                  </div>
+                </div>
+              ) : artifact.displayType === 'code' ? (
+                <div className="overflow-auto h-full p-6">
+                  <CodeBlock code={artifact.content || ''} language="typescript" />
+                </div>
+              ) : (
+                artifact.ui
+              )}
             </div>
           </motion.div>
         </motion.div>

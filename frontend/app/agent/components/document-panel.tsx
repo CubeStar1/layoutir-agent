@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import type { DocumentState } from "../types";
 import { IRBlockViewer } from "./ir-block-viewer";
 import {
   FileIcon,

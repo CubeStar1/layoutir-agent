@@ -7,13 +7,14 @@ import { z } from 'zod';
  * The execute function returns a confirmation so the model receives tool output.
  */
 export const showArtifactTool = tool({
-  description: 'Show an artifact panel to the user. Call this after converting a document or reading IR to display the document viewer. The panel is dismissable and will re-open when called again.',
+  description: 'Show an artifact panel to the user. Call this to display long-form content like code or markdown documents. The panel is dismissable and will re-open when called again.',
   inputSchema: z.object({
     title: z.string().describe('Title for the artifact panel'),
-    type: z.enum(['document']).describe('Display type — "document" shows the IR document viewer'),
-    identifier: z.string().optional().describe('Optional unique identifier such as a document_id'),
+    type: z.enum(['markdown', 'code']).describe('Display type — "markdown" for rendering markdown or "code" for rendering code blocks'),
+    content: z.string().describe('The content to display in the artifact panel (markdown string or raw code string)'),
+    identifier: z.string().optional().describe('Optional unique identifier for the content'),
   }),
-  execute: async function ({ title, type, identifier }: { title: string; type: 'document'; identifier?: string }) {
+  execute: async function ({ title, type, content, identifier }: { title: string; type: 'markdown' | 'code'; content: string; identifier?: string }) {
     return JSON.stringify({
       success: true,
       message: `Artifact panel "${title}" (${type}) is now visible to the user.`,

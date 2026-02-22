@@ -14,7 +14,6 @@ import {
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning'
 import { DynamicToolResult } from '@/app/agent/components/tool-displays/dynamic-tool-result'
 import { StaticToolDisplay } from '@/app/agent/components/tool-displays/static-tool-display'
-import { ArtifactToolIndicator } from '@/app/agent/components/tool-displays/artifact-tool-indicator'
 import { ThinkingMessage } from './message'
 import { CopyIcon, RefreshCcw, Zap, Clock, BrainCircuit } from 'lucide-react'
 import { toast } from 'sonner'
@@ -84,19 +83,6 @@ function PureMessages({ isLoading, messages }: MessagesProps) {
                     )
                   }
                   if (isStaticToolUIPart(part)) {
-                    // Artifact tool — render inline indicator for non-document types
-                    if (part.type === 'tool-show_artifact') {
-                      const input = (part as any).input
-                      return (
-                        <ArtifactToolIndicator
-                          key={`artifact-${partIndex}`}
-                          title={input?.title}
-                          displayType={input?.type}
-                          state={part.state}
-                          onOpen={onArtifactReopen}
-                        />
-                      )
-                    }
                     return <StaticToolDisplay key={`static-${partIndex}`} part={part} />
                   }
                   // Dynamic MCP tools

@@ -13,9 +13,10 @@ export function useArtifact() {
       title?: string
       displayType?: ArtifactDisplayType
       identifier?: string
+      content?: string
     }
   ) => {
-    setArtifactUI(ui, options?.title, options?.displayType, options?.identifier)
+    setArtifactUI(ui, options?.title, options?.displayType, options?.identifier, options?.content)
   }
 
   return {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { UIMessage } from 'ai'
-import type { ArtifactState, DocumentState, ArtifactDisplayType } from '../types'
+import type { ArtifactState, ArtifactDisplayType } from '../types'
 
 interface AgentStoreState {
   // State
@@ -8,7 +8,7 @@ interface AgentStoreState {
 
   // Actions
   handleArtifactUpdate: (artifact: Partial<ArtifactState>) => void
-  setArtifactUI: (ui: React.ReactNode, title?: string, displayType?: ArtifactDisplayType, identifier?: string) => void
+  setArtifactUI: (ui: React.ReactNode, title?: string, displayType?: ArtifactDisplayType, identifier?: string, content?: string) => void
   handleArtifactClose: () => void
   handleArtifactReopen: () => void
 }
@@ -29,7 +29,7 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
     }))
   },
 
-  setArtifactUI: (ui: React.ReactNode, title?: string, displayType: ArtifactDisplayType = 'custom', identifier?: string) => {
+  setArtifactUI: (ui: React.ReactNode, title?: string, displayType: ArtifactDisplayType = 'custom', identifier?: string, content?: string) => {
     set((state) => ({
       artifactState: {
         ...state.artifactState,
@@ -37,6 +37,7 @@ export const useAgentStore = create<AgentStoreState>((set) => ({
         title: title || state.artifactState.title,
         displayType,
         identifier: identifier || state.artifactState.identifier,
+        content: content || state.artifactState.content,
         isOpen: true,
       }
     }))
