@@ -13,9 +13,10 @@ import {
   HashIcon,
   LayersIcon,
   LayoutIcon,
+  FileOutputIcon,
 } from "lucide-react";
 
-// Dynamic import — react-pdf uses browser APIs that crash during SSR
+// Dynamic imports — these use browser APIs that crash during SSR
 const PdfBboxViewer = dynamic(
   () => import("./pdf-bbox-viewer").then((mod) => mod.PdfBboxViewer),
   {
@@ -24,6 +25,19 @@ const PdfBboxViewer = dynamic(
       <div className="flex h-full items-center justify-center">
         <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
         <span className="ml-2 text-sm text-muted-foreground">Loading viewer...</span>
+      </div>
+    ),
+  }
+);
+
+const IrPdfReconstructor = dynamic(
+  () => import("./ir-pdf-reconstructor").then((mod) => mod.IrPdfReconstructor),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center">
+        <div className="size-5 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+        <span className="ml-2 text-sm text-muted-foreground">Generating PDF...</span>
       </div>
     ),
   }
@@ -190,6 +204,13 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger
+                value="reconstruct"
+                className="relative rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none h-10 px-3 text-xs"
+              >
+                <FileOutputIcon className="size-3 mr-1.5" />
+                Reconstruct
+              </TabsTrigger>
             </TabsList>
 
             <div className="flex items-center gap-2">
@@ -223,6 +244,11 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
                 </p>
               </div>
             )}
+          </TabsContent>
+
+          {/* Tab: Reconstructed PDF from IR blocks */}
+          <TabsContent value="reconstruct" className="flex-1 overflow-hidden mt-0">
+            <IrPdfReconstructor blocks={irData.blocks || []} />
           </TabsContent>
         </Tabs>
       </div>
