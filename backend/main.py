@@ -1,107 +1,111 @@
 """
 LayoutIR MCP Server — Stateless FastMCP server exposing LayoutIR tools.
-Converts documents to IR, reads/edits/exports IR, all via MCP protocol.
 
-IR is stored on disk (output/<document_id>/ir.json) so tools reference
-documents by `document_id` instead of passing the full JSON through the LLM.
+Converts documents to IR, reads/edits/exports IR, all via MCP protocol.
+Input documents are fetched from URLs (any object store).
+All output is persisted to Supabase Storage with public URLs.
 """
 
 import json
-import hashlib
+import shutil
+import tempfile
 from pathlib import Path
 from typing import Optional
 
 from fastmcp import FastMCP
 
+import storage
+import ir_helpers
+from download import download_to_temp
+
 mcp = FastMCP("LayoutIR", instructions="""
 You have access to LayoutIR tools for document processing.
 
 Workflow:
-1. Use `convert_document` to convert a PDF/document into IR — returns a `document_id`
+1. Use `convert_document` with a **URL** to a PDF to convert it into IR — returns a `document_id`
 2. Use `read_ir` with the `document_id` to understand the document structure
 3. Use `edit_ir_block`, `add_ir_block`, or `delete_ir_block` with the `document_id` to modify blocks
 4. Use `export_to_markdown` with the `document_id` to export the final document
 
-IMPORTANT: All tools use `document_id` to reference the document — you do NOT need to pass IR JSON directly.
+IMPORTANT:
+- All tools use `document_id` to reference the document.
+- Input must be an HTTP(S) URL to a document file.
+- All output files (IR, images, exports) are stored in the cloud and accessible via public URLs.
 """)
 
-OUTPUT_DIR = Path("./output")
 
-
-def _get_ir_path(document_id: str) -> Path:
-    """Get the path to the IR JSON file for a document."""
-    return OUTPUT_DIR / document_id / "ir.json"
-
-
-def _load_ir(document_id: str) -> dict:
-    """Load IR from disk by document_id."""
-    ir_path = _get_ir_path(document_id)
-    if not ir_path.exists():
-        raise FileNotFoundError(f"No IR found for document_id: {document_id}")
-    return json.loads(ir_path.read_text(encoding="utf-8"))
-
-
-def _save_ir(document_id: str, ir: dict) -> None:
-    """Save IR to disk by document_id."""
-    ir_path = _get_ir_path(document_id)
-    ir_path.parent.mkdir(parents=True, exist_ok=True)
-    ir_path.write_text(json.dumps(ir, ensure_ascii=False), encoding="utf-8")
-
-
-def _generate_block_id(content: str, block_type: str, order: int) -> str:
-    """Generate a deterministic block ID."""
-    raw = f"{content}:{block_type}:{order}"
-    return f"blk_{hashlib.sha256(raw.encode()).hexdigest()[:16]}"
-
+# ── Convert ─────────────────────────────────────────────────────────
 
 @mcp.tool
-def convert_document(file_path: str, output_dir: str = "./output") -> dict:
-    """Convert a document (PDF) to LayoutIR intermediate representation.
-    
+def convert_document(file_url: str) -> dict:
+    """Convert a document (PDF) from a URL to LayoutIR intermediate representation.
+
+    The document is downloaded from the URL, processed locally, and all output
+    files are uploaded to cloud storage. Asset paths in the IR are rewritten
+    to public URLs.
+
     Args:
-        file_path: Path to the document file (PDF)
-        output_dir: Directory to write output files to
-        
+        file_url: HTTP(S) URL to the document file (PDF)
+
     Returns:
-        Dictionary with document_id and block count
+        Dictionary with document_id, block count, and public URLs
     """
     from layoutir import Pipeline
     from layoutir.adapters import DoclingAdapter
     from layoutir.chunking import SemanticSectionChunker
 
-    global OUTPUT_DIR
-    OUTPUT_DIR = Path(output_dir)
+    # 1. Download file from URL to temp dir
+    local_file = download_to_temp(file_url)
+    tmp_output = Path(tempfile.mkdtemp(prefix="layoutir_out_"))
 
-    pipeline = Pipeline(
-        adapter=DoclingAdapter(use_gpu=False),
-        chunk_strategy=SemanticSectionChunker(max_heading_level=2),
-    )
+    try:
+        # 2. Run the pipeline locally
+        pipeline = Pipeline(
+            adapter=DoclingAdapter(use_gpu=False),
+            chunk_strategy=SemanticSectionChunker(max_heading_level=2),
+        )
+        document = pipeline.process(
+            input_path=local_file,
+            output_dir=tmp_output,
+        )
 
-    document = pipeline.process(
-        input_path=Path(file_path),
-        output_dir=OUTPUT_DIR,
-    )
+        doc_id = document.document_id
+        doc_dir = tmp_output / doc_id
 
-    ir = _load_ir(document.document_id)
+        # 3. Upload all output files to Supabase Storage
+        url_map = storage.upload_directory(doc_id, doc_dir)
 
-    return {
-        "document_id": document.document_id,
-        "block_count": len(ir.get("blocks", [])),
-        "message": f"Document converted successfully. Use read_ir(document_id='{document.document_id}') to see the structure.",
-    }
+        # 4. Rewrite local asset paths in IR to public URLs, then re-upload IR
+        ir = json.loads((doc_dir / "ir.json").read_text(encoding="utf-8"))
+        ir = ir_helpers.rewrite_asset_paths(ir, url_map)
+        ir_helpers.save_ir(doc_id, ir)
 
+        return {
+            "document_id": doc_id,
+            "block_count": len(ir.get("blocks", [])),
+            "ir_url": url_map.get("ir.json"),
+            "manifest_url": url_map.get("manifest.json"),
+            "message": f"Document converted and uploaded. Use read_ir(document_id='{doc_id}') to see the structure.",
+        }
+    finally:
+        # 5. Clean up temp directories
+        shutil.rmtree(local_file.parent, ignore_errors=True)
+        shutil.rmtree(tmp_output, ignore_errors=True)
+
+
+# ── Read ─────────────────────────────────────────────────────────────
 
 @mcp.tool
 def read_ir(document_id: str) -> dict:
     """Read and summarize the IR for a document, returning structured block information.
-    
+
     Args:
         document_id: The document ID returned by convert_document
-        
+
     Returns:
         Dictionary with document info and a summary of all blocks
     """
-    ir = _load_ir(document_id)
+    ir = ir_helpers.load_ir(document_id)
 
     blocks_summary = []
     for b in ir.get("blocks", []):
@@ -124,6 +128,8 @@ def read_ir(document_id: str) -> dict:
     }
 
 
+# ── Edit ─────────────────────────────────────────────────────────────
+
 @mcp.tool
 def edit_ir_block(
     document_id: str,
@@ -133,18 +139,18 @@ def edit_ir_block(
     new_metadata: Optional[str] = None,
 ) -> dict:
     """Edit a specific block in the IR by its block_id.
-    
+
     Args:
         document_id: The document ID
         block_id: The ID of the block to edit
         new_content: New content text for the block (optional)
         new_type: New block type, e.g. 'heading', 'paragraph', 'list' (optional)
         new_metadata: New metadata as a JSON string (optional)
-        
+
     Returns:
         Confirmation of the edit
     """
-    ir = _load_ir(document_id)
+    ir = ir_helpers.load_ir(document_id)
     found = False
 
     for block in ir.get("blocks", []):
@@ -161,7 +167,7 @@ def edit_ir_block(
     if not found:
         return {"error": f"Block {block_id} not found"}
 
-    _save_ir(document_id, ir)
+    ir_helpers.save_ir(document_id, ir)
     return {
         "success": True,
         "block_id": block_id,
@@ -178,18 +184,18 @@ def add_ir_block(
     label: str = "text",
 ) -> dict:
     """Add a new block after a specified block.
-    
+
     Args:
         document_id: The document ID
         after_block_id: Insert the new block after this block_id
         content: Text content for the new block
         block_type: Block type (paragraph, heading, list, etc.)
         label: Metadata label for the block
-        
+
     Returns:
         Confirmation with the new block's ID
     """
-    ir = _load_ir(document_id)
+    ir = ir_helpers.load_ir(document_id)
     blocks = ir.get("blocks", [])
 
     insert_idx = None
@@ -210,7 +216,7 @@ def add_ir_block(
         block["order"] += 1
 
     new_block = {
-        "block_id": _generate_block_id(content, block_type, new_order),
+        "block_id": ir_helpers.generate_block_id(content, block_type, new_order),
         "type": block_type,
         "parent_id": None,
         "page_number": ref_block.get("page_number", 1),
@@ -230,7 +236,7 @@ def add_ir_block(
     if "stats" in ir:
         ir["stats"]["block_count"] = len(blocks)
 
-    _save_ir(document_id, ir)
+    ir_helpers.save_ir(document_id, ir)
     return {
         "success": True,
         "new_block_id": new_block["block_id"],
@@ -241,15 +247,15 @@ def add_ir_block(
 @mcp.tool
 def delete_ir_block(document_id: str, block_id: str) -> dict:
     """Delete a block from the IR by its block_id.
-    
+
     Args:
         document_id: The document ID
         block_id: The ID of the block to delete
-        
+
     Returns:
         Confirmation of the deletion
     """
-    ir = _load_ir(document_id)
+    ir = ir_helpers.load_ir(document_id)
     blocks = ir.get("blocks", [])
     original_len = len(blocks)
 
@@ -265,7 +271,7 @@ def delete_ir_block(document_id: str, block_id: str) -> dict:
     if "stats" in ir:
         ir["stats"]["block_count"] = len(ir["blocks"])
 
-    _save_ir(document_id, ir)
+    ir_helpers.save_ir(document_id, ir)
     return {
         "success": True,
         "block_id": block_id,
@@ -273,17 +279,19 @@ def delete_ir_block(document_id: str, block_id: str) -> dict:
     }
 
 
+# ── Export ───────────────────────────────────────────────────────────
+
 @mcp.tool
-def export_to_markdown(document_id: str) -> str:
-    """Export IR to Markdown format.
-    
+def export_to_markdown(document_id: str) -> dict:
+    """Export IR to Markdown format and upload to cloud storage.
+
     Args:
         document_id: The document ID
-        
+
     Returns:
-        The document rendered as a Markdown string
+        Dictionary with the markdown content and its public URL
     """
-    ir = _load_ir(document_id)
+    ir = ir_helpers.load_ir(document_id)
     blocks = sorted(ir.get("blocks", []), key=lambda b: b.get("order", 0))
 
     lines = []
@@ -309,22 +317,36 @@ def export_to_markdown(document_id: str) -> str:
             lines.append(content)
             lines.append("")
 
-    return "\n".join(lines)
+    markdown = "\n".join(lines)
 
+    # Upload to Supabase Storage
+    export_path = f"{document_id}/exports/markdown/full_document.md"
+    public_url = storage.upload_text(export_path, markdown, content_type="text/markdown")
+
+    return {
+        "markdown": markdown,
+        "url": public_url,
+        "message": f"Markdown exported and uploaded for document {document_id}.",
+    }
+
+
+# ── Raw IR ───────────────────────────────────────────────────────────
 
 @mcp.tool
 def get_ir_json(document_id: str) -> str:
     """Get the full IR JSON for a document. Use this when the frontend needs the raw IR.
-    
+
     Args:
         document_id: The document ID
-        
+
     Returns:
         The full IR JSON string
     """
-    ir = _load_ir(document_id)
+    ir = ir_helpers.load_ir(document_id)
     return json.dumps(ir, ensure_ascii=False)
 
+
+# ── Entry point ──────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     mcp.run(transport="http", host="0.0.0.0", port=8000)
