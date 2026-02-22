@@ -16,7 +16,7 @@
 - **Service Accounts**:
   - [Supabase](https://supabase.com/) (Database & Storage)
   - [Resend](https://resend.com/) (Email notifications)
-  - AI Providers: [OpenAI](https://platform.openai.com/), [Google AI](https://aistudio.google.com/), [Anthropic](https://console.anthropic.com/), etc.
+  - AI Providers: [OpenAI](https://platform.openai.com/), [Google Gemini](https://aistudio.google.com/)
 
 ### 2. Supabase Setup
 
