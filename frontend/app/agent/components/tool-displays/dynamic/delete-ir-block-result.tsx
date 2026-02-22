@@ -1,42 +1,44 @@
 'use client'
 
-import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, Hash } from 'lucide-react'
+import { CheckCircle2, XCircle, Hash, Trash2 } from 'lucide-react'
 
 export function DeleteIrBlockResult({ data }: { data: any }) {
   if (!data) return null
 
   const parsed = parseMCPOutput(data)
+  const isSuccess = parsed.success !== false
 
   return (
-    <div className="space-y-2">
-      {parsed.block_id && (
-        <div className="flex items-center gap-2">
-          <Hash className="size-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Deleted block:</span>
-          <Badge variant="secondary" className="font-mono text-xs line-through">
-            {parsed.block_id.length > 16 ? parsed.block_id.slice(0, 16) + '…' : parsed.block_id}
-          </Badge>
-        </div>
-      )}
-      {parsed.success !== undefined && (
-        <div className="flex items-center gap-1.5 text-sm">
-          {parsed.success ? (
-            <>
-              <CheckCircle2 className="size-3.5 text-green-500" />
-              <span className="text-green-600 dark:text-green-400">Block deleted successfully</span>
-            </>
-          ) : (
-            <>
-              <XCircle className="size-3.5 text-red-500" />
-              <span className="text-red-600 dark:text-red-400">{parsed.error || 'Delete failed'}</span>
-            </>
+    <div className="flex items-center gap-4 rounded-xl border border-border p-3 bg-secondary/10 hover:bg-secondary/20 transition-colors w-full">
+      <div className="flex h-12 w-10 flex-shrink-0 items-center justify-center rounded-md bg-red-500/10 text-red-500">
+        <Trash2 className="h-5 w-5" />
+      </div>
+      
+      <div className="flex flex-1 flex-col truncate">
+        <span className="text-sm font-medium text-foreground truncate">
+          Block Deleted
+        </span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          {parsed.block_id && (
+            <div className="flex items-center gap-1">
+              <Hash className="size-3" />
+              <span className="font-mono line-through opacity-60">
+                {parsed.block_id.slice(0, 8)}...
+              </span>
+            </div>
           )}
+          <div className="flex items-center gap-1">
+            {isSuccess ? (
+              <CheckCircle2 className="size-3 text-green-500" />
+            ) : (
+              <XCircle className="size-3 text-red-500" />
+            )}
+            <span className={isSuccess ? "text-green-500/80" : "text-red-500/80"}>
+              {isSuccess ? "Success" : "Failed"}
+            </span>
+          </div>
         </div>
-      )}
-      {parsed.message && (
-        <p className="text-sm text-muted-foreground">{parsed.message}</p>
-      )}
+      </div>
     </div>
   )
 }

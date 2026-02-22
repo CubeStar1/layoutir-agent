@@ -21,7 +21,6 @@ import { cn } from '@/lib/utils'
 import { Shimmer } from '@/components/ai-elements/shimmer'
 import { ConvertDocumentResult } from './convert-document-result'
 import { ReadIrResult, ReadIrAutoOpen } from './read-ir-result'
-import { GetIrJsonResult, GetIrJsonAutoOpen } from './get-ir-json-result'
 import { EditIrBlockResult } from './edit-ir-block-result'
 import { AddIrBlockResult } from './add-ir-block-result'
 import { DeleteIrBlockResult } from './delete-ir-block-result'
@@ -46,11 +45,6 @@ const LAYOUTIR_TOOLS: Record<
     displayName: 'Layoutir Read Ir',
     icon: Eye,
     color: 'text-emerald-500',
-  },
-  get_ir_json: {
-    displayName: 'Layoutir Get IR JSON',
-    icon: Braces,
-    color: 'text-cyan-500',
   },
   edit_ir_block: {
     displayName: 'Layoutir Edit Block',
@@ -140,9 +134,7 @@ function DynamicToolResultInternal({ part, onOpenDocumentPanel }: DynamicToolRes
       case 'convert_document':
         return <ConvertDocumentResult data={output} />
       case 'read_ir':
-        return <ReadIrResult data={output} />
-      case 'get_ir_json':
-        return <GetIrJsonResult data={output} />
+        return <ReadIrResult data={output} toolCallId={(part as any).toolCallId || (part as any).id} />
       case 'edit_ir_block':
         return <EditIrBlockResult data={output} />
       case 'add_ir_block':
@@ -160,10 +152,8 @@ function DynamicToolResultInternal({ part, onOpenDocumentPanel }: DynamicToolRes
 
   const renderToolHeadless = (toolKey: string, output: any) => {
     switch (toolKey) {
-      case 'get_ir_json':
-        return <GetIrJsonAutoOpen data={output} />
       case 'read_ir':
-        return <ReadIrAutoOpen data={output} />
+        return <ReadIrAutoOpen data={output} toolCallId={(part as any).toolCallId || (part as any).id} />
       default:
         return null
     }

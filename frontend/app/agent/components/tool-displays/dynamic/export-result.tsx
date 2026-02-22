@@ -1,53 +1,52 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, Download, FileType } from 'lucide-react'
+import { CheckCircle2, XCircle, Download, FileOutput, FileType } from 'lucide-react'
 
 export function ExportResult({ data, format }: { data: any; format: 'latex' | 'docx' }) {
   if (!data) return null
 
   const parsed = parseMCPOutput(data)
+  const isSuccess = parsed.success !== false
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <FileType className="size-3.5 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Format:</span>
-        <Badge variant="outline" className="text-xs uppercase">{format}</Badge>
+    <div className="flex items-center gap-4 rounded-xl border border-border p-3 bg-secondary/10 hover:bg-secondary/20 transition-colors w-full">
+      <div className="flex h-12 w-10 flex-shrink-0 items-center justify-center rounded-md bg-purple-500/10 text-purple-500">
+        <FileOutput className="h-5 w-5" />
       </div>
-      {parsed.download_url && (
+      
+      <div className="flex flex-1 flex-col truncate">
+        <span className="text-sm font-medium text-foreground truncate">
+          Document Exported
+        </span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          <div className="flex items-center gap-1">
+            <FileType className="size-3" />
+            <span className="uppercase">{format}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {isSuccess ? (
+              <CheckCircle2 className="size-3 text-green-500" />
+            ) : (
+              <XCircle className="size-3 text-red-500" />
+            )}
+            <span className={isSuccess ? "text-green-500/80" : "text-red-500/80"}>
+              {isSuccess ? "Success" : "Failed"}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {parsed.url && (
         <a
-          href={parsed.download_url}
+          href={parsed.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          className="flex h-8 items-center justify-center rounded-md border border-border bg-background px-4 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring flex-shrink-0 shadow-sm gap-1.5"
         >
-          <Download className="size-3.5" />
-          Download export
+          <Download className="size-3" />
+          Download
         </a>
-      )}
-      {parsed.file_path && (
-        <p className="text-sm text-muted-foreground">
-          Exported to <code className="text-xs bg-muted px-1 py-0.5 rounded">{parsed.file_path}</code>
-        </p>
-      )}
-      {parsed.success !== undefined && !parsed.download_url && !parsed.file_path && (
-        <div className="flex items-center gap-1.5 text-sm">
-          {parsed.success ? (
-            <>
-              <CheckCircle2 className="size-3.5 text-green-500" />
-              <span className="text-green-600 dark:text-green-400">Export completed</span>
-            </>
-          ) : (
-            <>
-              <XCircle className="size-3.5 text-red-500" />
-              <span className="text-red-600 dark:text-red-400">{parsed.error || 'Export failed'}</span>
-            </>
-          )}
-        </div>
-      )}
-      {parsed.message && (
-        <p className="text-sm text-muted-foreground">{parsed.message}</p>
       )}
     </div>
   )

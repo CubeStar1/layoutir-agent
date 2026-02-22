@@ -1,7 +1,7 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { FileText, Hash } from 'lucide-react'
+import { FileText, Hash, Layers } from 'lucide-react'
 
 export function ConvertDocumentResult({ data }: { data: any }) {
   if (!data) return null
@@ -10,24 +10,35 @@ export function ConvertDocumentResult({ data }: { data: any }) {
   const parsed = parseMCPOutput(data)
 
   return (
-    <div className="space-y-2">
+    <div className="flex items-center gap-4 rounded-xl border border-border p-3 bg-secondary/10 hover:bg-secondary/20 transition-colors w-full">
+      <div className="flex h-12 w-10 flex-shrink-0 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
+        <FileText className="h-5 w-5" />
+      </div>
+      
+      <div className="flex flex-1 flex-col truncate">
+        <span className="text-sm font-medium text-foreground truncate">
+          Document Converted
+        </span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          {parsed.document_id && (
+            <div className="flex items-center gap-1">
+              <Hash className="size-3" />
+              <span className="font-mono">{parsed.document_id.slice(0, 8)}...</span>
+            </div>
+          )}
+          {parsed.block_count !== undefined && (
+            <div className="flex items-center gap-1">
+              <Layers className="size-3" />
+              <span>{parsed.block_count} blocks</span>
+            </div>
+          )}
+        </div>
+      </div>
+      
       {parsed.document_id && (
-        <div className="flex items-center gap-2">
-          <Hash className="size-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Document ID:</span>
-          <Badge variant="secondary" className="font-mono text-xs">
-            {parsed.document_id}
-          </Badge>
-        </div>
-      )}
-      {parsed.filename && (
-        <div className="flex items-center gap-2">
-          <FileText className="size-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">{parsed.filename}</span>
-        </div>
-      )}
-      {parsed.message && (
-        <p className="text-sm text-muted-foreground">{parsed.message}</p>
+        <Badge variant="secondary" className="text-[10px] font-mono h-5 px-1.5 flex-shrink-0">
+          Ready
+        </Badge>
       )}
     </div>
   )

@@ -23,7 +23,7 @@ You have access to LayoutIR tools for document processing.
 
 Workflow:
 1. Use `convert_document` with a **public URL** to a document to convert it into IR — returns a `document_id`
-2. Use `read_ir` with the `document_id` to understand the document structure
+2. Use `read_ir` with the `document_id` to get the full document structure and JSON
 3. Use `edit_ir_block`, `add_ir_block`, or `delete_ir_block` with the `document_id` to modify blocks
 4. Use `export_to_markdown` with the `document_id` to export the final document
 
@@ -97,35 +97,15 @@ def convert_document(file_url: str) -> dict:
 
 @mcp.tool
 def read_ir(document_id: str) -> dict:
-    """Read and summarize the IR for a document, returning structured block information.
+    """Read the full IR for a document, returning the structured JSON.
 
     Args:
         document_id: The document ID returned by convert_document
 
     Returns:
-        Dictionary with document info and a summary of all blocks
+        The full IR JSON as a dictionary.
     """
-    ir = ir_helpers.load_ir(document_id)
-
-    blocks_summary = []
-    for b in ir.get("blocks", []):
-        blocks_summary.append({
-            "block_id": b["block_id"],
-            "type": b["type"],
-            "content_preview": b["content"][:200] if b.get("content") else "",
-            "order": b["order"],
-            "page_number": b.get("page_number"),
-            "label": b.get("metadata", {}).get("label"),
-        })
-
-    return {
-        "document_id": ir.get("document_id"),
-        "schema_version": ir.get("schema_version"),
-        "metadata": ir.get("metadata"),
-        "block_count": len(blocks_summary),
-        "blocks": blocks_summary,
-        "stats": ir.get("stats"),
-    }
+    return ir_helpers.load_ir(document_id)
 
 
 # ── Edit ─────────────────────────────────────────────────────────────
@@ -328,22 +308,6 @@ def export_to_markdown(document_id: str) -> dict:
         "url": public_url,
         "message": f"Markdown exported and uploaded for document {document_id}.",
     }
-
-
-# ── Raw IR ───────────────────────────────────────────────────────────
-
-@mcp.tool
-def get_ir_json(document_id: str) -> str:
-    """Get the full IR JSON for a document. Use this when the frontend needs the raw IR.
-
-    Args:
-        document_id: The document ID
-
-    Returns:
-        The full IR JSON string
-    """
-    ir = ir_helpers.load_ir(document_id)
-    return json.dumps(ir, ensure_ascii=False)
 
 
 # ── Entry point ──────────────────────────────────────────────────────

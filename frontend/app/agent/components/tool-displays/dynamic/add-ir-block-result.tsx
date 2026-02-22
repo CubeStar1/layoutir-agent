@@ -1,49 +1,49 @@
 'use client'
 
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, Hash, Tag } from 'lucide-react'
+import { CheckCircle2, XCircle, Hash, Plus, Tag } from 'lucide-react'
 
 export function AddIrBlockResult({ data }: { data: any }) {
   if (!data) return null
 
   const parsed = parseMCPOutput(data)
+  const isSuccess = parsed.success !== false
 
   return (
-    <div className="space-y-2">
-      {parsed.block_id && (
-        <div className="flex items-center gap-2">
-          <Hash className="size-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Block ID:</span>
-          <Badge variant="secondary" className="font-mono text-xs">
-            {parsed.block_id.length > 16 ? parsed.block_id.slice(0, 16) + '…' : parsed.block_id}
-          </Badge>
-        </div>
-      )}
-      {parsed.type && (
-        <div className="flex items-center gap-2">
-          <Tag className="size-3.5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Type:</span>
-          <Badge variant="outline" className="text-xs">{parsed.type}</Badge>
-        </div>
-      )}
-      {parsed.success !== undefined && (
-        <div className="flex items-center gap-1.5 text-sm">
-          {parsed.success ? (
-            <>
-              <CheckCircle2 className="size-3.5 text-green-500" />
-              <span className="text-green-600 dark:text-green-400">Block added successfully</span>
-            </>
-          ) : (
-            <>
-              <XCircle className="size-3.5 text-red-500" />
-              <span className="text-red-600 dark:text-red-400">{parsed.error || 'Add failed'}</span>
-            </>
+    <div className="flex items-center gap-4 rounded-xl border border-border p-3 bg-secondary/10 hover:bg-secondary/20 transition-colors w-full">
+      <div className="flex h-12 w-10 flex-shrink-0 items-center justify-center rounded-md bg-green-500/10 text-green-500">
+        <Plus className="h-5 w-5" />
+      </div>
+      
+      <div className="flex flex-1 flex-col truncate">
+        <span className="text-sm font-medium text-foreground truncate">
+          Block Added
+        </span>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          {parsed.new_block_id && (
+            <div className="flex items-center gap-1">
+              <Hash className="size-3" />
+              <span className="font-mono">{parsed.new_block_id.slice(0, 8)}...</span>
+            </div>
           )}
+          {parsed.type && (
+            <div className="flex items-center gap-1">
+              <Tag className="size-3" />
+              <span className="capitalize">{parsed.type}</span>
+            </div>
+          )}
+          <div className="flex items-center gap-1">
+            {isSuccess ? (
+              <CheckCircle2 className="size-3 text-green-500" />
+            ) : (
+              <XCircle className="size-3 text-red-500" />
+            )}
+            <span className={isSuccess ? "text-green-500/80" : "text-red-500/80"}>
+              {isSuccess ? "Success" : "Failed"}
+            </span>
+          </div>
         </div>
-      )}
-      {parsed.message && (
-        <p className="text-sm text-muted-foreground">{parsed.message}</p>
-      )}
+      </div>
     </div>
   )
 }

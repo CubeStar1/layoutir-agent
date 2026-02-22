@@ -45,3 +45,45 @@ create table public.messages (
   constraint messages_pkey primary key (id),
   constraint messages_conversation_id_fkey foreign KEY (conversation_id) references conversations (id) on delete CASCADE
 ) TABLESPACE pg_default;
+
+-- STORAGE BUCKETS SETUP --
+
+-- 1. Create buckets if they don't exist
+insert into storage.buckets (id, name, public) 
+values 
+  ('project-assets', 'project-assets', true),
+  ('layoutir', 'layoutir', true)
+on conflict (id) do nothing;
+
+-- 2. Allow public read access (required for getPublicUrl to work for images)
+create policy "Public Access for project-assets"
+on storage.objects for select
+to public
+using ( bucket_id = 'project-assets' );
+
+create policy "Public Access for layoutir"
+on storage.objects for select
+to public
+using ( bucket_id = 'layoutir' );
+
+-- 3. Allow authenticated users to upload files
+create policy "Authenticated Uploads for project-assets"
+on storage.objects for insert
+to authenticated
+with check ( bucket_id = 'project-assets' );
+
+create policy "Authenticated Uploads for layoutir"
+on storage.objects for insert
+to authenticated
+with check ( bucket_id = 'layoutir' );
+
+-- 4. Allow users to delete their own uploads
+create policy "Users can delete their own project-assets"
+on storage.objects for delete
+to authenticated
+using ( bucket_id = 'project-assets' and auth.uid() = owner );
+
+create policy "Users can delete their own layoutir"
+on storage.objects for delete
+to authenticated
+using ( bucket_id = 'layoutir' and auth.uid() = owner );
