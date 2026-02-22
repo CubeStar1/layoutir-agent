@@ -31,7 +31,7 @@ const PdfBboxViewer = dynamic(
 );
 
 const IrPdfReconstructor = dynamic(
-  () => import("./ir-pdf-reconstructor").then((mod) => mod.IrPdfReconstructor),
+  () => import("./ir-pdf-reconstructor/index").then((mod) => mod.IrPdfReconstructor),
   {
     ssr: false,
     loading: () => (
