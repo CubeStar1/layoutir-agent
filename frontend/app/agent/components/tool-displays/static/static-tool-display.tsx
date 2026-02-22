@@ -15,7 +15,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Shimmer } from '@/components/ai-elements/shimmer'
 import { ShowArtifactResult, ShowArtifactAutoOpen } from './show-artifact-result'
-import { DynamicToolResult } from './dynamic-tool-result'
+import { DynamicToolResult } from '../dynamic/dynamic-tool-result'
 
 interface StaticToolDisplayProps {
   part: ToolUIPart

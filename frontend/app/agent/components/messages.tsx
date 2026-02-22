@@ -12,8 +12,8 @@ import {
   MessageAction,
 } from '@/components/ai-elements/message'
 import { Reasoning, ReasoningContent, ReasoningTrigger } from '@/components/ai-elements/reasoning'
-import { DynamicToolResult } from '@/app/agent/components/tool-displays/dynamic-tool-result'
-import { StaticToolDisplay } from '@/app/agent/components/tool-displays/static-tool-display'
+import { DynamicToolResult } from '@/app/agent/components/tool-displays/dynamic/dynamic-tool-result'
+import { StaticToolDisplay } from '@/app/agent/components/tool-displays/static/static-tool-display'
 import { ThinkingMessage } from './message'
 import { CopyIcon, RefreshCcw, Zap, Clock, BrainCircuit } from 'lucide-react'
 import { toast } from 'sonner'

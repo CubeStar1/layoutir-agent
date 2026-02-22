@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from 'react'
-import { useArtifact } from '../../hooks/use-artifact'
-import { useAgentStore } from '../../store/agent-store'
+import { useArtifact } from '@/app/agent/hooks/use-artifact';
+import { useAgentStore } from '@/app/agent/store/agent-store';
 import { Code, FileText } from 'lucide-react'
 
 export function ShowArtifactAutoOpen({ args, state }: { args: any; state: string }) {

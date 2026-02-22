@@ -2,8 +2,8 @@
 
 import { Layers, FileStack, Braces, ExternalLink } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import { useArtifact } from '../../hooks/use-artifact'
-import { DocumentPanel } from '../document-panel'
+import { useArtifact } from '../../../hooks/use-artifact'
+import { DocumentPanel } from '../../document-artifact/document-panel'
 
 export function GetIrJsonResult({ data }: { data: any }) {
   const { showArtifact } = useArtifact();

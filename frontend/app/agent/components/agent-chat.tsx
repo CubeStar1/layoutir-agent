@@ -34,6 +34,7 @@ import { generateUUID } from "@/app/agent/lib/utils/generate-uuid";
 import { useModelSelection } from "@/app/agent/hooks/use-model-selection";
 import { ModelSelector } from "@/app/agent/components/model-selector";
 import { useSidebar } from "@/components/ui/sidebar";
+import { ModeToggle } from "@/components/global/theme-switcher";
 
 interface AgentChatProps {
   id: string;
@@ -139,16 +140,17 @@ export function AgentChat({
   return (
     <div className="flex h-full min-w-0 flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-2 border-b px-4 py-3">
+      <div className="flex items-center gap-2 border-b px-4 py-2 h-[57px]">
         <button
           onClick={() => toggleSidebar()}
-          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95"
+          title="Toggle sidebar"
         >
           <PanelLeftIcon className="size-4" />
         </button>
-        <FileTextIcon className="size-4 text-muted-foreground" />
-        <h2 className="text-sm font-medium">Document Agent</h2>
+        
         <div className="ml-auto flex items-center gap-2">
+          <ModeToggle />
         </div>
       </div>
 
