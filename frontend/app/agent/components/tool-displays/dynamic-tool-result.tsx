@@ -29,6 +29,7 @@ import { ExportResult } from './export-result'
 
 interface DynamicToolResultProps {
   part: DynamicToolUIPart
+  onOpenDocumentPanel?: (irJson?: string) => void
 }
 
 // LayoutIR-specific tool metadata
@@ -93,7 +94,7 @@ function formatToolName(name: string): string {
 }
 
 
-function DynamicToolResultInternal({ part }: DynamicToolResultProps) {
+function DynamicToolResultInternal({ part, onOpenDocumentPanel }: DynamicToolResultProps) {
   const [isOpen, setIsOpen] = useState(false)
 
   const isLoading = part.state === 'input-available' || part.state === 'input-streaming'
@@ -141,7 +142,7 @@ function DynamicToolResultInternal({ part }: DynamicToolResultProps) {
       case 'read_ir':
         return <ReadIrResult data={output} />
       case 'get_ir_json':
-        return <GetIrJsonResult data={output} />
+        return <GetIrJsonResult data={output} onOpenPanel={onOpenDocumentPanel} />
       case 'edit_ir_block':
         return <EditIrBlockResult data={output} />
       case 'add_ir_block':

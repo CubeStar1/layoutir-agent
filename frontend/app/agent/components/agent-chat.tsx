@@ -36,7 +36,7 @@ interface AgentChatProps {
   onIRUpdate: (irJson: string, documentId?: string) => void;
   onStatusChange: (isWorking: boolean) => void;
   onArtifactUpdate: (artifact: Partial<ArtifactState>) => void;
-  onArtifactReopen: () => void;
+  onArtifactReopen: (irJson?: string) => void;
 }
 
 export function AgentChat({
@@ -110,13 +110,13 @@ export function AgentChat({
     if (lastMessage.role !== "assistant") return;
 
     for (const part of lastMessage.parts) {
-      // Static tool: show_artifact
+      // Static tool: show_artifact — for non-document types (code, markdown, etc.)
       if (
         part.type === "tool-show_artifact" &&
         (part.state === "output-available" || part.state === "input-available")
       ) {
         const input = (part as any).input;
-        if (input) {
+        if (input && input.type !== 'document') {
           onArtifactUpdate({
             title: input.title,
             displayType: input.type || 'document',
@@ -141,18 +141,29 @@ export function AgentChat({
         }
 
         // read_ir or get_ir_json returns the full IR for the frontend viewer
+        // Auto-open the document panel when IR data with blocks arrives
         if (toolName.includes("get_ir_json") || toolName.includes("read_ir")) {
+          let irData: any = null;
+
           if (output?.blocks) {
-            onIRUpdate(JSON.stringify(output), output.document_id);
+            irData = output;
           } else if (typeof output === "string") {
             try {
               const parsed = JSON.parse(output);
-              if (parsed.blocks) {
-                onIRUpdate(JSON.stringify(parsed), parsed.document_id);
-              }
+              if (parsed.blocks) irData = parsed;
             } catch {
               // Not JSON IR, skip
             }
+          }
+
+          if (irData) {
+            onIRUpdate(JSON.stringify(irData), irData.document_id);
+            // Auto-trigger document panel
+            onArtifactUpdate({
+              title: 'Document Viewer',
+              displayType: 'document',
+              identifier: irData.document_id,
+            });
           }
         }
 

@@ -24,7 +24,7 @@ interface MessagesProps {
   isLoading: boolean
   messages: UIMessage[]
   onRegenerate?: () => void
-  onArtifactReopen?: () => void
+  onArtifactReopen?: (irJson?: string) => void
 }
 
 function PureMessages({ isLoading, messages, onArtifactReopen }: MessagesProps) {
@@ -82,7 +82,7 @@ function PureMessages({ isLoading, messages, onArtifactReopen }: MessagesProps) 
                     )
                   }
                   if (isStaticToolUIPart(part)) {
-                    // Artifact tool — render inline indicator instead of default display
+                    // Artifact tool — render inline indicator for non-document types
                     if (part.type === 'tool-show_artifact') {
                       const input = (part as any).input
                       return (
@@ -99,7 +99,13 @@ function PureMessages({ isLoading, messages, onArtifactReopen }: MessagesProps) 
                   }
                   // Dynamic MCP tools
                   if (part.type === 'dynamic-tool') {
-                    return <DynamicToolResult key={`dynamic-${partIndex}`} part={part as any} />
+                    return (
+                      <DynamicToolResult
+                        key={`dynamic-${partIndex}`}
+                        part={part as any}
+                        onOpenDocumentPanel={onArtifactReopen}
+                      />
+                    )
                   }
                   return null
                 })}

@@ -1,8 +1,8 @@
 'use client'
 
-import { Layers, FileStack, Braces } from 'lucide-react'
+import { Layers, FileStack, Braces, ExternalLink } from 'lucide-react'
 
-export function GetIrJsonResult({ data }: { data: any }) {
+export function GetIrJsonResult({ data, onOpenPanel }: { data: any; onOpenPanel?: (irJson?: string) => void }) {
   if (!data) return null
 
   const parsed = parseMCPOutput(data)
@@ -36,6 +36,19 @@ export function GetIrJsonResult({ data }: { data: any }) {
             <FileStack className="size-3.5" />
             <span>{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
           </div>
+        )}
+        {onOpenPanel && blockCount > 0 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const irJson = JSON.stringify(parsed);
+              onOpenPanel(irJson);
+            }}
+            className="flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 transition-colors ml-auto"
+          >
+            <ExternalLink className="size-3" />
+            <span>View Document</span>
+          </button>
         )}
       </div>
       {blockTypes.length > 0 && (

@@ -69,7 +69,10 @@ export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
     }));
   }, []);
 
-  const handleArtifactReopen = useCallback(() => {
+  const handleArtifactReopen = useCallback((irJson?: string) => {
+    if (irJson) {
+      setDocumentState((prev) => ({ ...prev, irJson }));
+    }
     setArtifactState((prev) => ({
       ...prev,
       isOpen: true,
