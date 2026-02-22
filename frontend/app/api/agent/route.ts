@@ -61,6 +61,7 @@ export async function POST(req: Request) {
     } = await req.json();
 
     const userMessage = messages[messages.length - 1];
+    console.log("Document Context:", documentContext);
 
     // Create or verify conversation
     if (conversationID) {

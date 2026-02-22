@@ -28,7 +28,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { UploadIcon, FileTextIcon, PanelLeftIcon } from "lucide-react";
+import { FileTextIcon, PanelLeftIcon, WandIcon } from "lucide-react";
 import { toast } from "sonner";
 import { generateUUID } from "@/app/agent/lib/utils/generate-uuid";
 import { useModelSelection } from "@/app/agent/hooks/use-model-selection";
@@ -60,7 +60,6 @@ export function AgentChat({
 }: AgentChatProps) {
   const [input, setInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { selectedModel, handleModelChange } = useModelSelection();
   const { toggleSidebar } = useSidebar();
 
@@ -193,63 +192,6 @@ export function AgentChat({
     }
   }, [messages, onIRUpdate, onArtifactUpdate, unwrapMCPOutput, documentState.documentId]);
 
-  const handleFileUpload = useCallback(
-    async (file: File) => {
-      const uploadToast = toast.loading("Uploading document...", {
-        description: file.name,
-      });
-
-      try {
-        const uploadedFile = await uploadChatAttachment(id, file);
-
-        onFileUploaded(uploadedFile.url, file.name);
-
-        toast.success("Document uploaded!", {
-          id: uploadToast,
-          description: `${file.name} ready for processing`,
-        });
-
-        // Auto-send a message to convert the document
-        sendMessage(
-          {
-            parts: [
-              {
-                type: "text",
-                text: `I've uploaded a document: ${file.name}. Please convert it to IR and show me its structure.`,
-              },
-              uploadedFile,
-            ],
-          },
-          {
-            body: {
-              model: selectedModel,
-              conversationID: id,
-              documentContext: {
-                filePath: uploadedFile.url,
-              },
-              attachments: [uploadedFile]
-            },
-          }
-        );
-      } catch (error: any) {
-        toast.error("Upload failed", {
-          id: uploadToast,
-          description: error.message,
-        });
-      }
-    },
-    [id, onFileUploaded, sendMessage, selectedModel]
-  );
-
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) handleFileUpload(file);
-      e.target.value = "";
-    },
-    [handleFileUpload]
-  );
-
   const handleSubmit = useCallback(
     async (promptMessage: PromptInputMessage) => {
       const content = input.trim();
@@ -275,6 +217,10 @@ export function AgentChat({
             return uploadChatAttachment(id, file);
           });
           uploadedFiles = await Promise.all(uploadPromises);
+
+          if (uploadedFiles.length > 0 && uploadedFiles[0].url) {
+            onFileUploaded(uploadedFiles[0].url, uploadedFiles[0].filename || "attachment");
+          }
         } catch (error) {
           console.error("Error uploading attachments:", error);
           toast.error("Failed to upload attachments");
@@ -299,7 +245,7 @@ export function AgentChat({
             model: selectedModel,
             conversationID: id,
             documentContext: {
-              filePath: documentState.documentUrl,
+              filePath: (uploadedFiles.length > 0 ? uploadedFiles[0].url : undefined) || documentState.documentUrl,
               documentId: documentState.documentId,
             },
             attachments: uploadedFiles,
@@ -309,7 +255,7 @@ export function AgentChat({
 
       setInput("");
     },
-    [input, id, documentState, selectedModel, sendMessage]
+    [input, id, documentState, selectedModel, sendMessage, onFileUploaded]
   );
 
   const handleInputChange = useCallback(
@@ -391,18 +337,11 @@ export function AgentChat({
           <PromptInputFooter>
             <PromptInputTools>
               <PromptInputButton
-                onClick={() => fileInputRef.current?.click()}
-                title="Upload Document"
+                onClick={() => setInput("Please convert the attached document to IR and show me its structure.")}
+                title="Convert Document"
               >
-                <UploadIcon className="size-4" />
+                <WandIcon className="size-4" />
               </PromptInputButton>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.txt,.md,.docx"
-                onChange={handleFileChange}
-                className="hidden"
-              />
               
               <PromptInputActionMenu>
                 <PromptInputActionMenuTrigger />
