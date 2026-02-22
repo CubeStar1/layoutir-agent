@@ -49,6 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Conversation } from "@/app/agent/types";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
+import { useAgentStore } from "@/app/agent/store/agent-store";
 
 type GroupedChats = {
   today: Conversation[];
@@ -64,12 +65,14 @@ const PureChatItem = ({
   onRename,
   onDelete,
   setOpenMobile,
+  handleArtifactClose,
 }: {
   chat: Conversation;
   isActive: boolean;
   onRename: (chatId: string, title: string) => void;
   onDelete: (chatId: string) => void;
   setOpenMobile: (open: boolean) => void;
+  handleArtifactClose: () => void;
 }) => {
   const [isRenaming, setIsRenaming] = useState(false);
   const [newTitle, setNewTitle] = useState(chat.title);
@@ -77,7 +80,10 @@ const PureChatItem = ({
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive}>
-        <Link href={`/agent/${chat.id}`} onClick={() => setOpenMobile(false)}>
+        <Link href={`/agent/${chat.id}`} onClick={() => {
+          handleArtifactClose();
+          setOpenMobile(false);
+        }}>
           <span>{chat.title}</span>
         </Link>
       </SidebarMenuButton>
@@ -144,6 +150,7 @@ export const ChatItem = memo(PureChatItem);
 
 export function AgentSidebarHistory({ user }: { user: User | undefined }) {
   const { setOpenMobile } = useSidebar();
+  const handleArtifactClose = useAgentStore((state) => state.handleArtifactClose);
   const { id } = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -332,6 +339,7 @@ export function AgentSidebarHistory({ user }: { user: User | undefined }) {
               }}
               onRename={(chatId, title) => renameMutation.mutate({ chatId, title })}
               setOpenMobile={setOpenMobile}
+              handleArtifactClose={handleArtifactClose}
             />
           ))}
         </div>

@@ -3,7 +3,6 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import type { DocumentState } from "../types";
-import { useAgentStore } from "../store/agent-store";
 import { IRBlockViewer } from "./ir-block-viewer";
 import {
   FileIcon,
@@ -46,122 +45,14 @@ const IrPdfReconstructor = dynamic(
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function DocumentPanel() {
-  const documentState = useAgentStore((state) => state.documentState);
-  const irData = useMemo(() => {
-    if (!documentState.irJson) return null;
-    try {
-      return JSON.parse(documentState.irJson);
-    } catch {
-      return null;
-    }
-  }, [documentState.irJson]);
+interface DocumentPanelProps {
+  irData?: any;
+  documentId?: string;
+}
 
-  // Build PDF URL from the file path
-  const pdfUrl = useMemo(() => {
-    if (!documentState.documentUrl) return null;
-    
-    // If it's already a full URL (like Supabase storage), use it directly
-    if (documentState.documentUrl.startsWith("http") || documentState.documentUrl.startsWith("data:")) {
-      return documentState.documentUrl;
-    }
-
-    // Extract just the filename from local absolute paths (fallback)
-    const parts = documentState.documentUrl.replace(/\\/g, "/").split("/");
-    const filename = parts[parts.length - 1];
-    return `/api/agent/file?path=${encodeURIComponent(filename)}`;
-  }, [documentState.documentUrl]);
-
-  // State 1: No document uploaded yet
-  if (!documentState.documentUrl && !documentState.irJson) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 bg-muted/30">
-        <div className="rounded-full bg-muted p-6">
-          <UploadCloudIcon className="size-10 text-muted-foreground" />
-        </div>
-        <div className="text-center">
-          <h3 className="text-lg font-semibold">No Document Loaded</h3>
-          <p className="mt-1 text-sm text-muted-foreground max-w-xs">
-            Upload a PDF using the chat panel to see its intermediate
-            representation here.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // State 2: File uploaded, agent is actively converting (no documentId yet)
-  if (documentState.documentUrl && !documentState.documentId && !irData) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 bg-muted/30">
-        {documentState.isAgentWorking ? (
-          <>
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Loader2Icon className="size-5 animate-spin" />
-              <span className="text-sm">Converting document...</span>
-            </div>
-            <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
-              <FileIcon className="size-4 text-muted-foreground" />
-              <span className="text-sm">
-                {documentState.documentName || "Document"}
-              </span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="rounded-full bg-muted p-4">
-              <FileTextIcon className="size-8 text-muted-foreground" />
-            </div>
-            <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
-              <FileIcon className="size-4 text-muted-foreground" />
-              <span className="text-sm">
-                {documentState.documentName || "Document"}
-              </span>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-xs text-center">
-              File uploaded. Ask the agent to convert it to IR.
-            </p>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  // State 3: Document converted (we have documentId) but IR not fetched yet
-  if (documentState.documentId && !irData) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-4 p-8 bg-muted/30">
-        <div className="rounded-full bg-emerald-500/10 p-4">
-          <CheckCircle2Icon className="size-8 text-emerald-500" />
-        </div>
-        <div className="text-center">
-          <h3 className="text-sm font-semibold">Document Converted</h3>
-          <div className="mt-2 flex items-center gap-2 rounded-md bg-muted px-3 py-2 mx-auto">
-            <FileIcon className="size-4 text-muted-foreground" />
-            <span className="text-sm">
-              {documentState.documentName || "Document"}
-            </span>
-          </div>
-          <div className="mt-2 flex items-center justify-center gap-1.5">
-            <HashIcon className="size-3 text-muted-foreground" />
-            <span className="font-mono text-xs text-muted-foreground">
-              {documentState.documentId.slice(0, 16)}…
-            </span>
-          </div>
-        </div>
-        {documentState.isAgentWorking ? (
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Loader2Icon className="size-4 animate-spin" />
-            <span className="text-xs">Fetching IR structure...</span>
-          </div>
-        ) : (
-          <p className="text-xs text-muted-foreground max-w-xs text-center">
-            IR structure will appear here once the agent reads it.
-          </p>
-        )}
-      </div>
-    );
-  }
+export function DocumentPanel({ irData, documentId }: DocumentPanelProps) {
+  // Extract PDF URL from the raw IR payload if available 
+  const pdfUrl = irData?.metadata?.source_url || null;
 
   // State 4: IR loaded — show tabbed view
   if (irData) {
@@ -219,7 +110,7 @@ export function DocumentPanel() {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {documentState.documentName || "Document"}
+                Document Preview
               </span>
               {irData.document_id && (
                 <span className="font-mono text-[10px] text-muted-foreground">

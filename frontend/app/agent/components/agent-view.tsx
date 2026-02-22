@@ -18,14 +18,6 @@ interface AgentViewProps {
 
 export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
   const artifactStateOpen = useAgentStore((state) => state.artifactState.isOpen);
-  const initializeFromMessages = useAgentStore((state) => state.initializeFromMessages);
-
-  // Extract initial state from chat history if available
-  // This allows the document state to persist across page reloads
-  useEffect(() => {
-    console.log("AgentView mounted for chat:", id, "initialMessages length:", initialMessages?.length);
-    initializeFromMessages(id, initialMessages);
-  }, [id, initialMessages, initializeFromMessages]);
 
   return (
     <div className="h-dvh flex flex-col">

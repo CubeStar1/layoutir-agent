@@ -1,8 +1,13 @@
 'use client'
 
-import { Layers, FileStack } from 'lucide-react'
+import { Layers, FileStack, ExternalLink } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { useArtifact } from '../../hooks/use-artifact'
+import { DocumentPanel } from '../document-panel'
 
 export function ReadIrResult({ data }: { data: any }) {
+  const { showArtifact } = useArtifact();
+
   if (!data) return null
 
   const parsed = parseMCPOutput(data)
@@ -24,7 +29,7 @@ export function ReadIrResult({ data }: { data: any }) {
     : 0
 
   return (
-    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+    <div className="flex items-center gap-4 text-sm text-muted-foreground w-full">
       {blockCount > 0 && (
         <div className="flex items-center gap-1.5">
           <Layers className="size-3.5" />
@@ -36,6 +41,22 @@ export function ReadIrResult({ data }: { data: any }) {
           <FileStack className="size-3.5" />
           <span>{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
         </div>
+      )}
+      {blockCount > 0 && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const uniqueKey = `doc-${parsed.document_id}-${Date.now()}`;
+            showArtifact(
+              <DocumentPanel key={uniqueKey} irData={parsed} documentId={parsed.document_id} />, 
+              { title: 'Document Viewer', displayType: 'document', identifier: uniqueKey }
+            );
+          }}
+          className="flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 transition-colors ml-auto"
+        >
+          <ExternalLink className="size-3" />
+          <span>View Document</span>
+        </button>
       )}
     </div>
   )
@@ -53,4 +74,26 @@ function parseMCPOutput(data: any): any {
     try { return JSON.parse(text) } catch { return text }
   }
   return data
+}
+
+export function ReadIrAutoOpen({ data }: { data: any }) {
+  const { showArtifact } = useArtifact();
+  const hasAutoOpened = useRef(false);
+
+  useEffect(() => {
+    if (!data) return;
+    const parsed = parseMCPOutput(data);
+    const blockCount = parsed.blocks?.length ?? 0;
+
+    if (blockCount > 0 && !hasAutoOpened.current) {
+      hasAutoOpened.current = true;
+      const uniqueKey = `auto-${parsed.document_id}-${Date.now()}`;
+      showArtifact(
+        <DocumentPanel key={uniqueKey} irData={parsed} documentId={parsed.document_id} />, 
+        { title: 'Document Viewer', displayType: 'document', identifier: uniqueKey }
+      );
+    }
+  }, [data, showArtifact]);
+
+  return null;
 }

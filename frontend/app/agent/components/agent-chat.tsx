@@ -34,7 +34,6 @@ import { generateUUID } from "@/app/agent/lib/utils/generate-uuid";
 import { useModelSelection } from "@/app/agent/hooks/use-model-selection";
 import { ModelSelector } from "@/app/agent/components/model-selector";
 import { useSidebar } from "@/components/ui/sidebar";
-import { useAgentStore } from "../store/agent-store";
 
 interface AgentChatProps {
   id: string;
@@ -49,12 +48,6 @@ export function AgentChat({
   const [isUploading, setIsUploading] = useState(false);
   const { selectedModel, handleModelChange } = useModelSelection();
   const { toggleSidebar } = useSidebar();
-
-  const documentState = useAgentStore((state) => state.documentState);
-  const onStatusChange = useAgentStore((state) => state.handleStatusChange);
-  const onArtifactUpdate = useAgentStore((state) => state.handleArtifactUpdate);
-  const onIRUpdate = useAgentStore((state) => state.handleIRUpdate);
-  const onFileUploaded = useAgentStore((state) => state.handleFileUploaded);
 
   const { messages, status, sendMessage } = useChat({
     messages: initialMessages,
@@ -74,116 +67,6 @@ export function AgentChat({
       window.history.replaceState({}, "", `/agent/${id}`);
     }
   }, [id, messages]);
-
-  // Propagate chat status to parent for document panel state
-  useEffect(() => {
-    const isWorking = status === "submitted" || status === "streaming";
-    onStatusChange(isWorking);
-  }, [status, onStatusChange]);
-
-  // Unwrap MCP content format: {content: [{type:"text", text:"..."}]} → parsed JSON
-  const unwrapMCPOutput = useCallback((output: any): any => {
-    if (!output) return output;
-
-    let data = output;
-    // If it's a string, try parsing it
-    if (typeof data === "string") {
-      try { data = JSON.parse(data); } catch { return output; }
-    }
-
-    // MCP tools return {content: [{type:"text", text:"..."}]}
-    if (data?.content && Array.isArray(data.content)) {
-      const textParts = data.content
-        .filter((item: any) => item.type === "text" && item.text)
-        .map((item: any) => item.text);
-      if (textParts.length > 0) {
-        const joined = textParts.join("");
-        try { return JSON.parse(joined); } catch { return joined; }
-      }
-    }
-
-    return data;
-  }, []);
-
-  // Watch for IR updates and artifact tool calls in assistant messages
-  useEffect(() => {
-    if (messages.length === 0) return;
-    const lastMessage = messages[messages.length - 1];
-    if (lastMessage.role !== "assistant") return;
-
-    for (const part of lastMessage.parts) {
-      // Static tool: show_artifact — for non-document types (code, markdown, etc.)
-      if (
-        part.type === "tool-show_artifact" &&
-        (part.state === "output-available" || part.state === "input-available")
-      ) {
-        const input = (part as any).input;
-        if (input && input.type !== 'document') {
-          onArtifactUpdate({
-            title: input.title,
-            displayType: input.type || 'document',
-            identifier: input.identifier,
-          });
-        }
-      }
-
-      // In AI SDK v6, MCP tool parts have type 'dynamic-tool'
-      // and state 'output-available' when complete
-      if (
-        part.type === "dynamic-tool" &&
-        part.state === "output-available" &&
-        part.output != null
-      ) {
-        const toolName = part.toolName || "";
-        const output = unwrapMCPOutput(part.output);
-
-        // convert_document returns document_id — store it
-        if (toolName.includes("convert_document") && output?.document_id) {
-          onIRUpdate("", output.document_id);
-        }
-
-        // read_ir or get_ir_json returns the full IR for the frontend viewer
-        // Auto-open the document panel when IR data with blocks arrives
-        if (toolName.includes("get_ir_json") || toolName.includes("read_ir")) {
-          let irData: any = null;
-
-          if (output?.blocks) {
-            irData = output;
-          } else if (typeof output === "string") {
-            try {
-              const parsed = JSON.parse(output);
-              if (parsed.blocks) irData = parsed;
-            } catch {
-              // Not JSON IR, skip
-            }
-          }
-
-          if (irData) {
-            const docId = irData.document_id || documentState.documentId;
-            onIRUpdate(JSON.stringify(irData), docId);
-            // Auto-trigger document panel
-            onArtifactUpdate({
-              title: 'Document Viewer',
-              displayType: 'document',
-              identifier: docId,
-            });
-          }
-        }
-
-        // edit/add/delete return {success, document_id} — re-fetch IR
-        if (
-          (toolName.includes("edit_ir_block") ||
-           toolName.includes("add_ir_block") ||
-           toolName.includes("delete_ir_block")) &&
-          output?.success
-        ) {
-          if (output.document_id || documentState.documentId) {
-            onIRUpdate("", output.document_id || documentState.documentId);
-          }
-        }
-      }
-    }
-  }, [messages, onIRUpdate, onArtifactUpdate, unwrapMCPOutput, documentState.documentId]);
 
   const handleSubmit = useCallback(
     async (promptMessage: PromptInputMessage) => {
@@ -210,10 +93,6 @@ export function AgentChat({
             return uploadChatAttachment(id, file);
           });
           uploadedFiles = await Promise.all(uploadPromises);
-
-          if (uploadedFiles.length > 0 && uploadedFiles[0].url) {
-            onFileUploaded(uploadedFiles[0].url, uploadedFiles[0].filename || "attachment");
-          }
         } catch (error) {
           console.error("Error uploading attachments:", error);
           toast.error("Failed to upload attachments");
@@ -238,8 +117,7 @@ export function AgentChat({
             model: selectedModel,
             conversationID: id,
             documentContext: {
-              filePath: (uploadedFiles.length > 0 ? uploadedFiles[0].url : undefined) || documentState.documentUrl,
-              documentId: documentState.documentId,
+              filePath: uploadedFiles.length > 0 ? uploadedFiles[0].url : undefined,
             },
             attachments: uploadedFiles,
           },
@@ -248,7 +126,7 @@ export function AgentChat({
 
       setInput("");
     },
-    [input, id, documentState, selectedModel, sendMessage, onFileUploaded]
+    [input, id, selectedModel, sendMessage]
   );
 
   const handleInputChange = useCallback(
@@ -271,11 +149,6 @@ export function AgentChat({
         <FileTextIcon className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-medium">Document Agent</h2>
         <div className="ml-auto flex items-center gap-2">
-          {documentState.documentName && (
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-              {documentState.documentName}
-            </span>
-          )}
         </div>
       </div>
 
@@ -316,11 +189,7 @@ export function AgentChat({
             <PromptInputTextarea
               onChange={handleInputChange}
               value={input}
-              placeholder={
-                documentState.irJson
-                  ? "Ask me to edit the document..."
-                  : "Upload a document or ask a question..."
-              }
+              placeholder="Upload a document or ask a question..."
               name="message"
               disabled={isUploading || status === "streaming" || status === "submitted"}
               autoFocus
@@ -334,7 +203,7 @@ export function AgentChat({
               >
                 <WandIcon className="size-4" />
               </PromptInputButton>
-              
+
               <PromptInputActionMenu>
                 <PromptInputActionMenuTrigger />
                 <PromptInputActionMenuContent>

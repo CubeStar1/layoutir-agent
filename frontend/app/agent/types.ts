@@ -43,12 +43,12 @@ export interface ArtifactState {
   displayType: ArtifactDisplayType
   content?: string
   identifier?: string
+  ui?: React.ReactNode // Canvas UI payload
 }
 
 export interface DocumentState {
   documentUrl?: string; // e.g. /api/agent/file?path=...
   documentName?: string;
-  irJson?: string; // The generated JSON IR
   documentId?: string; // Server tracking ID
   isAgentWorking?: boolean; // Whether the bot is processing/typing
 }

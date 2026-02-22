@@ -1,8 +1,13 @@
 'use client'
 
 import { Layers, FileStack, Braces, ExternalLink } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { useArtifact } from '../../hooks/use-artifact'
+import { DocumentPanel } from '../document-panel'
 
-export function GetIrJsonResult({ data, onOpenPanel }: { data: any; onOpenPanel?: (irJson?: string) => void }) {
+export function GetIrJsonResult({ data }: { data: any }) {
+  const { showArtifact } = useArtifact();
+
   if (!data) return null
 
   const parsed = parseMCPOutput(data)
@@ -37,12 +42,15 @@ export function GetIrJsonResult({ data, onOpenPanel }: { data: any; onOpenPanel?
             <span>{pageCount} page{pageCount !== 1 ? 's' : ''}</span>
           </div>
         )}
-        {onOpenPanel && blockCount > 0 && (
+        {blockCount > 0 && (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              const irJson = JSON.stringify(parsed);
-              onOpenPanel(irJson);
+              const uniqueKey = `doc-${parsed.document_id}-${Date.now()}`;
+              showArtifact(
+                <DocumentPanel key={uniqueKey} irData={parsed} documentId={parsed.document_id} />, 
+                { title: 'Document Viewer', displayType: 'document', identifier: uniqueKey }
+              );
             }}
             className="flex items-center gap-1 text-xs text-cyan-500 hover:text-cyan-400 transition-colors ml-auto"
           >
@@ -80,4 +88,26 @@ function parseMCPOutput(data: any): any {
     try { return JSON.parse(text) } catch { return {} }
   }
   return data
+}
+
+export function GetIrJsonAutoOpen({ data }: { data: any }) {
+  const { showArtifact } = useArtifact();
+  const hasAutoOpened = useRef(false);
+
+  useEffect(() => {
+    if (!data) return;
+    const parsed = parseMCPOutput(data);
+    const blockCount = parsed.blocks?.length ?? 0;
+
+    if (blockCount > 0 && !hasAutoOpened.current) {
+      hasAutoOpened.current = true;
+      const uniqueKey = `auto-${parsed.document_id}-${Date.now()}`;
+      showArtifact(
+        <DocumentPanel key={uniqueKey} irData={parsed} documentId={parsed.document_id} />, 
+        { title: 'Document Viewer', displayType: 'document', identifier: uniqueKey }
+      );
+    }
+  }, [data, showArtifact]);
+
+  return null;
 }

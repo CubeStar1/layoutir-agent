@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { AgentSidebarHistory } from "./sidebar-history";
 import { SidebarUserNav } from "@/app/chat/components/sidebar/sidebar-user-nav";
+import { useAgentStore } from "@/app/agent/store/agent-store";
 import Image from "next/image";
 
 import {
@@ -35,6 +36,7 @@ interface AgentSidebarProps {
 
 export function AgentSidebar({ user }: AgentSidebarProps) {
   const { setOpenMobile } = useSidebar();
+  const handleArtifactClose = useAgentStore((state) => state.handleArtifactClose);
   const appName = process.env.NEXT_PUBLIC_APP_NAME!;
   const appIcon = process.env.NEXT_PUBLIC_APP_ICON!;
 
@@ -50,7 +52,10 @@ export function AgentSidebar({ user }: AgentSidebarProps) {
             >
               <Link
                 href="/"
-                onClick={() => setOpenMobile(false)}
+                onClick={() => {
+                  handleArtifactClose();
+                  setOpenMobile(false);
+                }}
               >
                 <Image
                   src={appIcon}
@@ -75,7 +80,10 @@ export function AgentSidebar({ user }: AgentSidebarProps) {
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="New Chat">
-                  <Link prefetch={false} href="/agent" onClick={() => setOpenMobile(false)}>
+                  <Link prefetch={false} href="/agent" onClick={() => {
+                    handleArtifactClose();
+                    setOpenMobile(false);
+                  }}>
                     <PlusIcon className="size-4" />
                     <span>New Chat</span>
                   </Link>

@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { X, Maximize2, Minimize2 } from 'lucide-react'
 import { useState } from 'react'
 import { useAgentStore } from '../store/agent-store'
-import { DocumentPanel } from './document-panel'
 
 export function ArtifactPanel() {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -81,9 +80,10 @@ export function ArtifactPanel() {
             transition={{ delay: 0.15, duration: 0.35, ease: [0.32, 0.72, 0, 1] }}
             className="flex-1 overflow-hidden"
           >
-            {artifact.displayType === 'document' && (
-              <DocumentPanel />
-            )}
+            {/* The key prop ensures React completely unmounts and remounts the UI when a new one is passed */}
+            <div key={artifact.identifier || Date.now()} className="h-full w-full">
+              {artifact.ui}
+            </div>
           </motion.div>
         </motion.div>
       )}

@@ -158,5 +158,4 @@ function PureMessages({ isLoading, messages }: MessagesProps) {
     </>
   )
 }
-
 export const Messages = memo(PureMessages)

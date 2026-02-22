@@ -20,8 +20,8 @@ import {
 import { cn } from '@/lib/utils'
 import { Shimmer } from '@/components/ai-elements/shimmer'
 import { ConvertDocumentResult } from './convert-document-result'
-import { ReadIrResult } from './read-ir-result'
-import { GetIrJsonResult } from './get-ir-json-result'
+import { ReadIrResult, ReadIrAutoOpen } from './read-ir-result'
+import { GetIrJsonResult, GetIrJsonAutoOpen } from './get-ir-json-result'
 import { EditIrBlockResult } from './edit-ir-block-result'
 import { AddIrBlockResult } from './add-ir-block-result'
 import { DeleteIrBlockResult } from './delete-ir-block-result'
@@ -142,7 +142,7 @@ function DynamicToolResultInternal({ part, onOpenDocumentPanel }: DynamicToolRes
       case 'read_ir':
         return <ReadIrResult data={output} />
       case 'get_ir_json':
-        return <GetIrJsonResult data={output} onOpenPanel={onOpenDocumentPanel} />
+        return <GetIrJsonResult data={output} />
       case 'edit_ir_block':
         return <EditIrBlockResult data={output} />
       case 'add_ir_block':
@@ -158,6 +158,17 @@ function DynamicToolResultInternal({ part, onOpenDocumentPanel }: DynamicToolRes
     }
   }
 
+  const renderToolHeadless = (toolKey: string, output: any) => {
+    switch (toolKey) {
+      case 'get_ir_json':
+        return <GetIrJsonAutoOpen data={output} />
+      case 'read_ir':
+        return <ReadIrAutoOpen data={output} />
+      default:
+        return null
+    }
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 5 }}
@@ -165,6 +176,7 @@ function DynamicToolResultInternal({ part, onOpenDocumentPanel }: DynamicToolRes
       transition={{ duration: 0.2 }}
       className="my-1"
     >
+      {isCompleted && lirTool && renderToolHeadless(lirTool.key, part.output)}
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild disabled={!canExpand}>
           <button
