@@ -3,18 +3,14 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, Maximize2, Minimize2 } from 'lucide-react'
 import { useState } from 'react'
-import type { ArtifactState } from '../types'
-import type { DocumentState } from './agent-view'
+import { useAgentStore } from '../store/agent-store'
 import { DocumentPanel } from './document-panel'
 
-interface ArtifactPanelProps {
-  artifact: ArtifactState
-  documentState: DocumentState
-  onClose: () => void
-}
-
-export function ArtifactPanel({ artifact, documentState, onClose }: ArtifactPanelProps) {
+export function ArtifactPanel() {
   const [isExpanded, setIsExpanded] = useState(false)
+
+  const artifact = useAgentStore((state) => state.artifactState)
+  const onClose = useAgentStore((state) => state.handleArtifactClose)
 
   return (
     <AnimatePresence mode="wait">
@@ -86,7 +82,7 @@ export function ArtifactPanel({ artifact, documentState, onClose }: ArtifactPane
             className="flex-1 overflow-hidden"
           >
             {artifact.displayType === 'document' && (
-              <DocumentPanel documentState={documentState} />
+              <DocumentPanel />
             )}
           </motion.div>
         </motion.div>

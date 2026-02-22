@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import type { DocumentState } from "./agent-view";
+import type { DocumentState } from "../types";
+import { useAgentStore } from "../store/agent-store";
 import { IRBlockViewer } from "./ir-block-viewer";
 import {
   FileIcon,
@@ -45,11 +46,8 @@ const IrPdfReconstructor = dynamic(
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface DocumentPanelProps {
-  documentState: DocumentState;
-}
-
-export function DocumentPanel({ documentState }: DocumentPanelProps) {
+export function DocumentPanel() {
+  const documentState = useAgentStore((state) => state.documentState);
   const irData = useMemo(() => {
     if (!documentState.irJson) return null;
     try {

@@ -20,14 +20,16 @@ import { CopyIcon, RefreshCcw, Zap, Clock, BrainCircuit } from 'lucide-react'
 import { toast } from 'sonner'
 import { TelemetryMetadata } from '../types'
 
+import { useAgentStore } from '../store/agent-store'
+
 interface MessagesProps {
   isLoading: boolean
   messages: UIMessage[]
   onRegenerate?: () => void
-  onArtifactReopen?: (irJson?: string) => void
 }
 
-function PureMessages({ isLoading, messages, onArtifactReopen }: MessagesProps) {
+function PureMessages({ isLoading, messages }: MessagesProps) {
+  const onArtifactReopen = useAgentStore((state) => state.handleArtifactReopen)
   return (
     <>
       {messages.map((message, index) => {

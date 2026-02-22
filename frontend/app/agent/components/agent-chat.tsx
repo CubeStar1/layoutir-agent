@@ -33,35 +33,28 @@ import { toast } from "sonner";
 import { generateUUID } from "@/app/agent/lib/utils/generate-uuid";
 import { useModelSelection } from "@/app/agent/hooks/use-model-selection";
 import { ModelSelector } from "@/app/agent/components/model-selector";
-import type { DocumentState } from "./agent-view";
-import type { ArtifactState } from "../types";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useAgentStore } from "../store/agent-store";
 
 interface AgentChatProps {
   id: string;
   initialMessages?: UIMessage[];
-  documentState: DocumentState;
-  onFileUploaded: (filePath: string, fileName: string) => void;
-  onIRUpdate: (irJson: string, documentId?: string) => void;
-  onStatusChange: (isWorking: boolean) => void;
-  onArtifactUpdate: (artifact: Partial<ArtifactState>) => void;
-  onArtifactReopen: (irJson?: string) => void;
 }
 
 export function AgentChat({
   id,
   initialMessages = [],
-  documentState,
-  onFileUploaded,
-  onIRUpdate,
-  onStatusChange,
-  onArtifactUpdate,
-  onArtifactReopen,
 }: AgentChatProps) {
   const [input, setInput] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const { selectedModel, handleModelChange } = useModelSelection();
   const { toggleSidebar } = useSidebar();
+
+  const documentState = useAgentStore((state) => state.documentState);
+  const onStatusChange = useAgentStore((state) => state.handleStatusChange);
+  const onArtifactUpdate = useAgentStore((state) => state.handleArtifactUpdate);
+  const onIRUpdate = useAgentStore((state) => state.handleIRUpdate);
+  const onFileUploaded = useAgentStore((state) => state.handleFileUploaded);
 
   const { messages, status, sendMessage } = useChat({
     messages: initialMessages,
@@ -306,7 +299,6 @@ export function AgentChat({
           <Messages
             isLoading={status === "submitted" || status === "streaming"}
             messages={messages}
-            onArtifactReopen={onArtifactReopen}
           />
         </ConversationContent>
         <ConversationScrollButton />
