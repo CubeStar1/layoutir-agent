@@ -23,9 +23,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-import storage
-import ir_helpers
-from download import download_to_temp
+from mcp_server.utils import storage, ir_helpers
+from mcp_server.utils.download import download_to_temp
+
 
 
 def separator(title: str) -> None:

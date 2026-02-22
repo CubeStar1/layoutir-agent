@@ -14,9 +14,9 @@ from typing import Optional
 
 from fastmcp import FastMCP
 
-import storage
-import ir_helpers
-from download import download_to_temp
+from mcp_server.utils import storage, ir_helpers
+from mcp_server.utils.download import download_to_temp
+
 
 mcp = FastMCP("LayoutIR", instructions="""
 You have access to LayoutIR tools for document processing.

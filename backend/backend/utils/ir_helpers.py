@@ -8,7 +8,8 @@ plus block ID generation and asset path rewriting.
 import json
 import hashlib
 
-import storage
+from mcp_server.utils import storage
+
 
 
 def get_ir_storage_path(document_id: str) -> str:
