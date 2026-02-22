@@ -57,37 +57,48 @@ def _guess_content_type(path: str) -> str:
 
 # ── Upload helpers ──────────────────────────────────────────────────
 
-def upload_file(storage_path: str, local_path: Path) -> str:
+def upload_file(storage_path: str, local_path: Path, cache_control: str = "3600") -> str:
     """Upload a local file and return its public URL."""
     content_type = _guess_content_type(str(local_path))
     with open(local_path, "rb") as f:
         _client().storage.from_(BUCKET).upload(
             path=storage_path,
             file=f,
-            file_options={"content-type": content_type, "upsert": "true"},
+            file_options={"content-type": content_type, "upsert": "true", "cache-control": cache_control},
         )
     return get_public_url(storage_path)
 
 
-def upload_bytes(storage_path: str, data: bytes, content_type: str = "application/octet-stream") -> str:
+def upload_bytes(storage_path: str, data: bytes, content_type: str = "application/octet-stream", cache_control: str = "3600") -> str:
     """Upload raw bytes and return the public URL."""
     _client().storage.from_(BUCKET).upload(
         path=storage_path,
         file=data,
-        file_options={"content-type": content_type, "upsert": "true"},
+        file_options={"content-type": content_type, "upsert": "true", "cache-control": cache_control},
     )
     return get_public_url(storage_path)
 
 
-def upload_text(storage_path: str, text: str, content_type: str = "text/plain") -> str:
+def upload_text(storage_path: str, text: str, content_type: str = "text/plain", cache_control: str = "3600") -> str:
     """Upload a text string and return the public URL."""
-    return upload_bytes(storage_path, text.encode("utf-8"), content_type)
+    return upload_bytes(storage_path, text.encode("utf-8"), content_type, cache_control)
 
+
+import time
+import httpx
 
 # ── Download helpers ────────────────────────────────────────────────
 
-def download_text(storage_path: str) -> str:
-    """Download a file as text."""
+def download_text(storage_path: str, cache_bust: bool = False) -> str:
+    """Download a file as text. If cache_bust is True, bypasses edge cache."""
+    if cache_bust:
+        url = get_public_url(storage_path)
+        url = f"{url}?t={int(time.time() * 1000)}"
+        with httpx.Client(follow_redirects=True) as client:
+            resp = client.get(url)
+            resp.raise_for_status()
+            return resp.text
+            
     data = _client().storage.from_(BUCKET).download(storage_path)
     return data.decode("utf-8")
 

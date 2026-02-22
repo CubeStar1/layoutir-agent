@@ -61,15 +61,21 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
 
   // Build PDF URL from the file path
   const pdfUrl = useMemo(() => {
-    if (!documentState.filePath) return null;
-    // Extract just the filename from the absolute path
-    const parts = documentState.filePath.replace(/\\/g, "/").split("/");
+    if (!documentState.documentUrl) return null;
+    
+    // If it's already a full URL (like Supabase storage), use it directly
+    if (documentState.documentUrl.startsWith("http") || documentState.documentUrl.startsWith("data:")) {
+      return documentState.documentUrl;
+    }
+
+    // Extract just the filename from local absolute paths (fallback)
+    const parts = documentState.documentUrl.replace(/\\/g, "/").split("/");
     const filename = parts[parts.length - 1];
     return `/api/agent/file?path=${encodeURIComponent(filename)}`;
-  }, [documentState.filePath]);
+  }, [documentState.documentUrl]);
 
   // State 1: No document uploaded yet
-  if (!documentState.filePath && !documentState.irJson) {
+  if (!documentState.documentUrl && !documentState.irJson) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8 bg-muted/30">
         <div className="rounded-full bg-muted p-6">
@@ -87,7 +93,7 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
   }
 
   // State 2: File uploaded, agent is actively converting (no documentId yet)
-  if (documentState.filePath && !documentState.documentId && !irData) {
+  if (documentState.documentUrl && !documentState.documentId && !irData) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 p-8 bg-muted/30">
         {documentState.isAgentWorking ? (
@@ -99,7 +105,7 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
             <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
               <FileIcon className="size-4 text-muted-foreground" />
               <span className="text-sm">
-                {documentState.fileName || "Document"}
+                {documentState.documentName || "Document"}
               </span>
             </div>
           </>
@@ -111,7 +117,7 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
             <div className="flex items-center gap-2 rounded-md bg-muted px-3 py-2">
               <FileIcon className="size-4 text-muted-foreground" />
               <span className="text-sm">
-                {documentState.fileName || "Document"}
+                {documentState.documentName || "Document"}
               </span>
             </div>
             <p className="text-sm text-muted-foreground max-w-xs text-center">
@@ -135,7 +141,7 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
           <div className="mt-2 flex items-center gap-2 rounded-md bg-muted px-3 py-2 mx-auto">
             <FileIcon className="size-4 text-muted-foreground" />
             <span className="text-sm">
-              {documentState.fileName || "Document"}
+              {documentState.documentName || "Document"}
             </span>
           </div>
           <div className="mt-2 flex items-center justify-center gap-1.5">
@@ -215,7 +221,7 @@ export function DocumentPanel({ documentState }: DocumentPanelProps) {
 
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">
-                {documentState.fileName || "Document"}
+                {documentState.documentName || "Document"}
               </span>
               {irData.document_id && (
                 <span className="font-mono text-[10px] text-muted-foreground">

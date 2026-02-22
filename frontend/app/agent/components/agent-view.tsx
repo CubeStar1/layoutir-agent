@@ -17,8 +17,8 @@ interface AgentViewProps {
 }
 
 export interface DocumentState {
-  filePath?: string;
-  fileName?: string;
+  documentUrl?: string;
+  documentName?: string;
   irJson?: string;
   documentId?: string;
   /** Whether the agent is currently streaming / processing */
@@ -32,9 +32,88 @@ export function AgentView({ id, initialMessages = [] }: AgentViewProps) {
     displayType: 'document',
   });
 
+  // Extract initial state from chat history if available
+  // This allows the document state to persist across page reloads
+  useState(() => {
+    if (!initialMessages || initialMessages.length === 0) return;
+
+    let initialDocState: DocumentState = {};
+    let shouldOpenArtifact = false;
+
+    // 1. Scan forwards to find the document URL from user uploads
+    for (const msg of initialMessages) {
+      if (msg.role === "user" && msg.parts) {
+        for (const part of msg.parts) {
+          if (part.type === "file" && part.url) {
+            initialDocState.documentUrl = part.url;
+            initialDocState.documentName = part.filename || "Document";
+          }
+        }
+      }
+    }
+
+    // 2. Scan backwards to find the latest valid IR JSON and documentId
+    for (let i = initialMessages.length - 1; i >= 0; i--) {
+      const msg = initialMessages[i];
+      if (msg.role === "assistant" && msg.parts) {
+        let foundIr = false;
+        for (const part of msg.parts) {
+          if (
+            part.type === "dynamic-tool" &&
+            part.state === "output-available" &&
+            (part.toolName.includes("get_ir_json") || part.toolName.includes("read_ir")) &&
+            part.output
+          ) {
+            let output = part.output as any;
+            if (typeof output === "string") {
+              try { output = JSON.parse(output); } catch {}
+            }
+            if (output?.blocks) {
+              initialDocState.irJson = typeof part.output === "string" ? part.output : JSON.stringify(output);
+              if (output.document_id) {
+                initialDocState.documentId = output.document_id;
+              }
+              foundIr = true;
+              break;
+            }
+          } else if (
+            part.type === "dynamic-tool" &&
+            part.state === "output-available" &&
+            part.toolName.includes("convert_document") &&
+            part.output
+          ) {
+            // Also grab documentId if convert happened but get_ir_json hasn't run yet
+            let output = part.output as any;
+            if (typeof output === "string") {
+               try { output = JSON.parse(output); } catch {}
+            }
+            if (output?.document_id && !initialDocState.documentId) {
+               initialDocState.documentId = output.document_id;
+            }
+          }
+        }
+        if (foundIr) {
+          shouldOpenArtifact = true;
+          break; // Found the latest IR, stop searching backwards
+        }
+      }
+    }
+
+    if (Object.keys(initialDocState).length > 0) {
+      setDocumentState(initialDocState);
+    }
+    if (shouldOpenArtifact) {
+      setArtifactState((prev) => ({
+        ...prev,
+        isOpen: true,
+        identifier: initialDocState.documentId,
+      }));
+    }
+  });
+
   const handleFileUploaded = useCallback(
-    (filePath: string, fileName: string) => {
-      setDocumentState((prev) => ({ ...prev, filePath, fileName }));
+    (documentUrl: string, documentName: string) => {
+      setDocumentState((prev) => ({ ...prev, documentUrl, documentName }));
     },
     []
   );

@@ -12,8 +12,17 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  PromptInputHeader,
+  PromptInputAttachments,
+  PromptInputAttachment,
+  PromptInputActionMenu,
+  PromptInputActionMenuTrigger,
+  PromptInputActionMenuContent,
+  PromptInputActionAddAttachments,
   type PromptInputMessage,
 } from "@/components/ai-elements/prompt-input";
+import { uploadChatAttachment } from "@/lib/supabase/upload-chat-attachment";
+import type { FileUIPart } from "ai";
 import {
   Conversation,
   ConversationContent,
@@ -50,6 +59,7 @@ export function AgentChat({
   onArtifactReopen,
 }: AgentChatProps) {
   const [input, setInput] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { selectedModel, handleModelChange } = useModelSelection();
   const { toggleSidebar } = useSidebar();
@@ -157,12 +167,13 @@ export function AgentChat({
           }
 
           if (irData) {
-            onIRUpdate(JSON.stringify(irData), irData.document_id);
+            const docId = irData.document_id || documentState.documentId;
+            onIRUpdate(JSON.stringify(irData), docId);
             // Auto-trigger document panel
             onArtifactUpdate({
               title: 'Document Viewer',
               displayType: 'document',
-              identifier: irData.document_id,
+              identifier: docId,
             });
           }
         }
@@ -174,35 +185,26 @@ export function AgentChat({
            toolName.includes("delete_ir_block")) &&
           output?.success
         ) {
-          if (output.document_id) {
-            onIRUpdate("", output.document_id);
+          if (output.document_id || documentState.documentId) {
+            onIRUpdate("", output.document_id || documentState.documentId);
           }
         }
       }
     }
-  }, [messages, onIRUpdate, onArtifactUpdate, unwrapMCPOutput]);
+  }, [messages, onIRUpdate, onArtifactUpdate, unwrapMCPOutput, documentState.documentId]);
 
   const handleFileUpload = useCallback(
     async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      const uploadToast = toast.loading("Uploading file...", {
+      const uploadToast = toast.loading("Uploading document...", {
         description: file.name,
       });
 
       try {
-        const response = await fetch("/api/agent/upload", {
-          method: "POST",
-          body: formData,
-        });
+        const uploadedFile = await uploadChatAttachment(id, file);
 
-        if (!response.ok) throw new Error("Upload failed");
+        onFileUploaded(uploadedFile.url, file.name);
 
-        const data = await response.json();
-        onFileUploaded(data.filePath, data.fileName);
-
-        toast.success("File uploaded!", {
+        toast.success("Document uploaded!", {
           id: uploadToast,
           description: `${file.name} ready for processing`,
         });
@@ -215,6 +217,7 @@ export function AgentChat({
                 type: "text",
                 text: `I've uploaded a document: ${file.name}. Please convert it to IR and show me its structure.`,
               },
+              uploadedFile,
             ],
           },
           {
@@ -222,8 +225,9 @@ export function AgentChat({
               model: selectedModel,
               conversationID: id,
               documentContext: {
-                filePath: data.filePath,
+                filePath: uploadedFile.url,
               },
+              attachments: [uploadedFile]
             },
           }
         );
@@ -234,7 +238,7 @@ export function AgentChat({
         });
       }
     },
-    [id, onFileUploaded, sendMessage]
+    [id, onFileUploaded, sendMessage, selectedModel]
   );
 
   const handleFileChange = useCallback(
@@ -247,20 +251,58 @@ export function AgentChat({
   );
 
   const handleSubmit = useCallback(
-    (_promptMessage: PromptInputMessage) => {
+    async (promptMessage: PromptInputMessage) => {
       const content = input.trim();
-      if (!content) return;
+      const hasText = Boolean(content);
+      const hasAttachments = Boolean(promptMessage.files?.length);
+
+      if (!hasText && !hasAttachments) return;
+
+      let uploadedFiles: FileUIPart[] = [];
+
+      if (hasAttachments && promptMessage.files) {
+        setIsUploading(true);
+        try {
+          const uploadPromises = promptMessage.files.map(async (fileUIPart) => {
+            if (!fileUIPart.url) {
+              throw new Error("File URL is missing");
+            }
+            const response = await fetch(fileUIPart.url);
+            const blob = await response.blob();
+            const file = new File([blob], fileUIPart.filename || "attachment", {
+              type: fileUIPart.mediaType || blob.type,
+            });
+            return uploadChatAttachment(id, file);
+          });
+          uploadedFiles = await Promise.all(uploadPromises);
+        } catch (error) {
+          console.error("Error uploading attachments:", error);
+          toast.error("Failed to upload attachments");
+          setIsUploading(false);
+          return;
+        }
+        setIsUploading(false);
+      }
+
+      const parts: any[] = [];
+      if (content || !hasAttachments) {
+        parts.push({ type: "text", text: content || "Sent with attachments" });
+      }
+      uploadedFiles.forEach(file => {
+        parts.push(file);
+      });
 
       sendMessage(
-        { parts: [{ type: "text", text: content }] },
+        { parts },
         {
           body: {
             model: selectedModel,
             conversationID: id,
             documentContext: {
-              filePath: documentState.filePath,
+              filePath: documentState.documentUrl,
               documentId: documentState.documentId,
             },
+            attachments: uploadedFiles,
           },
         }
       );
@@ -290,9 +332,9 @@ export function AgentChat({
         <FileTextIcon className="size-4 text-muted-foreground" />
         <h2 className="text-sm font-medium">Document Agent</h2>
         <div className="ml-auto flex items-center gap-2">
-          {documentState.fileName && (
+          {documentState.documentName && (
             <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-              {documentState.fileName}
+              {documentState.documentName}
             </span>
           )}
         </div>
@@ -326,7 +368,12 @@ export function AgentChat({
 
       {/* Input */}
       <div className="sticky bottom-0 z-10 mx-auto flex w-full max-w-3xl flex-col gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
-        <PromptInput onSubmit={handleSubmit} className="border-border w-full">
+        <PromptInput onSubmit={handleSubmit} className="border-border w-full" globalDrop multiple>
+          <PromptInputHeader className="p-0">
+            <PromptInputAttachments>
+              {(attachment) => <PromptInputAttachment data={attachment} />}
+            </PromptInputAttachments>
+          </PromptInputHeader>
           <PromptInputBody>
             <PromptInputTextarea
               onChange={handleInputChange}
@@ -337,6 +384,7 @@ export function AgentChat({
                   : "Upload a document or ask a question..."
               }
               name="message"
+              disabled={isUploading || status === "streaming" || status === "submitted"}
               autoFocus
             />
           </PromptInputBody>
@@ -344,6 +392,7 @@ export function AgentChat({
             <PromptInputTools>
               <PromptInputButton
                 onClick={() => fileInputRef.current?.click()}
+                title="Upload Document"
               >
                 <UploadIcon className="size-4" />
               </PromptInputButton>
@@ -354,6 +403,14 @@ export function AgentChat({
                 onChange={handleFileChange}
                 className="hidden"
               />
+              
+              <PromptInputActionMenu>
+                <PromptInputActionMenuTrigger />
+                <PromptInputActionMenuContent>
+                  <PromptInputActionAddAttachments />
+                </PromptInputActionMenuContent>
+              </PromptInputActionMenu>
+
               <ModelSelector
                 key={selectedModel}
                 selectedModelId={selectedModel}
@@ -361,9 +418,9 @@ export function AgentChat({
               />
             </PromptInputTools>
             <PromptInputSubmit
-              disabled={!input}
+              disabled={(!input && status !== "streaming") || isUploading}
               status={
-                status === "streaming" || status === "submitted"
+                isUploading || status === "streaming" || status === "submitted"
                   ? "streaming"
                   : "ready"
               }

@@ -22,7 +22,7 @@ mcp = FastMCP("LayoutIR", instructions="""
 You have access to LayoutIR tools for document processing.
 
 Workflow:
-1. Use `convert_document` with a **URL** to a PDF to convert it into IR — returns a `document_id`
+1. Use `convert_document` with a **public URL** to a document to convert it into IR — returns a `document_id`
 2. Use `read_ir` with the `document_id` to understand the document structure
 3. Use `edit_ir_block`, `add_ir_block`, or `delete_ir_block` with the `document_id` to modify blocks
 4. Use `export_to_markdown` with the `document_id` to export the final document

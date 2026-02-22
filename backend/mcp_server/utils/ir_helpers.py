@@ -22,7 +22,7 @@ def load_ir(document_id: str) -> dict:
     """Load IR JSON from Supabase Storage."""
     path = get_ir_storage_path(document_id)
     try:
-        text = storage.download_text(path)
+        text = storage.download_text(path, cache_bust=True)
     except Exception as exc:
         raise FileNotFoundError(f"No IR found for document_id: {document_id}") from exc
     return json.loads(text)
@@ -32,7 +32,8 @@ def save_ir(document_id: str, ir: dict) -> str:
     """Save IR JSON to Supabase Storage. Returns the public URL."""
     path = get_ir_storage_path(document_id)
     text = json.dumps(ir, ensure_ascii=False)
-    return storage.upload_text(path, text, content_type="application/json")
+    # Use no-cache so edits propagate immediately
+    return storage.upload_text(path, text, content_type="application/json", cache_control="no-cache")
 
 
 def generate_block_id(content: str, block_type: str, order: int) -> str:

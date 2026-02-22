@@ -102,7 +102,7 @@ export async function POST(req: Request) {
       systemPrompt += `\n\nThe current document_id is: ${documentContext.documentId}`;
     }
     if (documentContext?.filePath) {
-      systemPrompt += `\nThe uploaded file is at: ${documentContext.filePath}`;
+      systemPrompt += `\nThe uploaded document URL is: ${documentContext.filePath}. Use this URL with the \`layoutir_convert_document\` tool.`;
     }
 
     const stream = createUIMessageStream({
