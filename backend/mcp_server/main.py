@@ -78,6 +78,13 @@ def convert_document(file_url: str) -> dict:
         # 4. Rewrite local asset paths in IR to public URLs, then re-upload IR
         ir = json.loads((doc_dir / "ir.json").read_text(encoding="utf-8"))
         ir = ir_helpers.rewrite_asset_paths(ir, url_map)
+        
+        # Store the source URL to allow the frontend to preview the document
+        if "metadata" not in ir:
+            ir["metadata"] = {}
+        ir["metadata"]["source_url"] = file_url
+        ir["source_url"] = file_url
+        
         ir_helpers.save_ir(doc_id, ir)
 
         return {
